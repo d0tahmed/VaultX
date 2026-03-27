@@ -3,10 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:local_auth/local_auth.dart';
 import '../services/vault_provider.dart';
-import '../services/clipboard_service.dart'; // 🔴 RED TEAM PATCH: Added Clipboard Service
+import '../services/clipboard_service.dart'; 
 import 'pin_entry_screen.dart';
 import '../models/password_entry.dart';
-import '../main.dart'; // 🔴 Needed to talk to the Watchdog's SecurityState
+import '../main.dart'; 
 
 class CategoryDetailScreen extends StatefulWidget {
   final String categoryId;
@@ -22,10 +22,6 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
   bool isEditMode = false;
   List<String> selectedEntryIds = [];
 
-  // --- SMOOTH EDIT MENU ---
-  // ── AUTH GATE: fires before ANY edit action ───────────────────────────────
-  // Tries biometric first; if unavailable or fails, falls back to PIN screen.
-  // Only calls [onVerified] if the user actually passes auth.
   Future<void> _gateEditWithAuth(BuildContext context, VoidCallback onVerified) async {
     final auth = LocalAuthentication();
     final bool bioAvailable = await auth.canCheckBiometrics && await auth.isDeviceSupported();
@@ -37,18 +33,16 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
           localizedReason: 'Verify identity to edit this entry',
           options: const AuthenticationOptions(
             stickyAuth: true,
-            biometricOnly: false, // allows PIN fallback from OS too
+            biometricOnly: false, 
           ),
         );
         SecurityState.isAuthenticating = false;
         if (ok && context.mounted) onVerified();
       } catch (_) {
         SecurityState.isAuthenticating = false;
-        // Biometric threw — fall through to PIN
         if (context.mounted) await _gateWithPin(context, onVerified);
       }
     } else {
-      // No biometric on device — go straight to PIN
       await _gateWithPin(context, onVerified);
     }
   }
@@ -60,7 +54,6 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     );
     if (result == true && context.mounted) onVerified();
   }
-  // ─────────────────────────────────────────────────────────────────────────
 
   void _showEditMenu(BuildContext context, PasswordEntry entry) {
     HapticFeedback.mediumImpact();
@@ -82,7 +75,6 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                   padding: const EdgeInsets.all(24.0),
                   child: Text('Manage ${entry.title}', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
                 ),
-                // ✅ ALL edits now go through _gateEditWithAuth first
                 _buildMenuTile(Icons.password, 'Change Password', () {
                   Navigator.pop(modalContext);
                   _gateEditWithAuth(context, () => _showSingleEditDialog(context, entry, 'password'));
@@ -95,7 +87,6 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                   Navigator.pop(modalContext);
                   _gateEditWithAuth(context, () => _showSingleEditDialog(context, entry, 'title'));
                 }),
-                // Delete still requires confirmation dialog (no auth needed — it's destructive but not secret)
                 _buildMenuTile(Icons.delete_outline, 'Delete Entry', () {
                   Navigator.pop(modalContext);
                   _showDeleteConfirmation(context, entry);
@@ -109,7 +100,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     );
   }
 
-  ListTile _buildMenuTile(IconData icon, String title, VoidCallback onTap, {Color color = Colors.cyanAccent}) {
+  ListTile _buildMenuTile(IconData icon, String title, VoidCallback onTap, {Color color = Colors.purpleAccent}) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
@@ -140,7 +131,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
           controller: controller,
           autofocus: true,
           obscureText: fieldToEdit == 'password',
-          cursorColor: Colors.cyanAccent,
+          cursorColor: Colors.purpleAccent,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             filled: true,
@@ -151,7 +142,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.white54))),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent.shade700, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             onPressed: () {
               if (controller.text.isNotEmpty) {
                 final vault = Provider.of<VaultProvider>(context, listen: false);
@@ -161,11 +152,15 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                 Navigator.pop(context);
               }
             },
-            child: const Text('Save', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
-    );
+    ).then((_) {
+      // 🛡️ SEC PATCH: Destroy the controller and clear plaintext from heap
+      controller.clear();
+      controller.dispose();
+    });
   }
 
   void _showDeleteConfirmation(BuildContext context, PasswordEntry entry) {
@@ -192,7 +187,8 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     );
   }
 
-  void _showAuthOptions(BuildContext context, String title, String password) {
+  // 🛡️ SEC PATCH: Passing Entry object instead of raw password string
+  void _showAuthOptions(BuildContext context, PasswordEntry entry) {
     HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
@@ -207,8 +203,8 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                 padding: EdgeInsets.all(24.0),
                 child: Text('Verify Identity', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
               ),
-              _buildMenuTile(Icons.fingerprint, 'Use Fingerprint', () { Navigator.pop(modalContext); _verifyBiometric(context, title, password); }),
-              _buildMenuTile(Icons.dialpad, 'Use Vault PIN', () { Navigator.pop(modalContext); _verifyPin(context, title, password); }),
+              _buildMenuTile(Icons.fingerprint, 'Use Fingerprint', () { Navigator.pop(modalContext); _verifyBiometric(context, entry); }),
+              _buildMenuTile(Icons.dialpad, 'Use Vault PIN', () { Navigator.pop(modalContext); _verifyPin(context, entry); }),
               const SizedBox(height: 20),
             ],
           ),
@@ -216,10 +212,10 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
       },
     );
   }
-Future<void> _verifyBiometric(BuildContext context, String title, String password) async {
+
+  Future<void> _verifyBiometric(BuildContext context, PasswordEntry entry) async {
     final auth = LocalAuthentication();
     try {
-      // 🔴 RED TEAM PATCH: Tell the Watchdog "We are authenticating, do not wipe memory!"
       SecurityState.isAuthenticating = true; 
       
       bool authenticated = await auth.authenticate(
@@ -228,22 +224,21 @@ Future<void> _verifyBiometric(BuildContext context, String title, String passwor
       );
       
       if (authenticated && mounted) {
-        _showPasswordDialog(context, title, password);
+        _showPasswordDialog(context, entry);
       }
     } catch (e) {
       debugPrint("Auth Error: $e");
     } finally {
-      // 🔴 RED TEAM PATCH: Turn the Watchdog back on!
       SecurityState.isAuthenticating = false; 
     }
   }
 
-  Future<void> _verifyPin(BuildContext context, String title, String password) async {
+  Future<void> _verifyPin(BuildContext context, PasswordEntry entry) async {
     final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const PinEntryScreen(isRevealing: true)));
-    if (result == true && mounted) _showPasswordDialog(context, title, password);
+    if (result == true && mounted) _showPasswordDialog(context, entry);
   }
 
-  void _showPasswordDialog(BuildContext context, String title, String password) {
+  void _showPasswordDialog(BuildContext context, PasswordEntry entry) {
     HapticFeedback.lightImpact();
     showDialog(
       context: context,
@@ -252,32 +247,30 @@ Future<void> _verifyBiometric(BuildContext context, String title, String passwor
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.lock_open, color: Colors.cyanAccent),
+            const Icon(Icons.lock_open, color: Colors.purpleAccent),
             const SizedBox(width: 10),
-            Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            Text(entry.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ],
         ),
         content: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(color: const Color(0xFF0F0F0F), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white10)),
-          child: SelectableText(password, style: const TextStyle(color: Colors.cyanAccent, fontSize: 24, letterSpacing: 2.0, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+          child: SelectableText(entry.password, style: const TextStyle(color: Colors.purpleAccent, fontSize: 24, letterSpacing: 2.0, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close', style: TextStyle(color: Colors.white54))),
           ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent.shade700, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            icon: const Icon(Icons.copy, color: Colors.black, size: 18),
-            label: const Text('Copy Password', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            icon: const Icon(Icons.copy, size: 18),
+            label: const Text('Copy Password', style: TextStyle(fontWeight: FontWeight.bold)),
             onPressed: () {
               HapticFeedback.mediumImpact();
-              
-              // 🔴 RED TEAM FIX: Secure Copy triggers the auto-wipe!
-              ClipboardService.secureCopy(password);
+              ClipboardService.secureCopy(entry.password);
               
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: const Text('Copied! Auto-wiping in 15s...', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                backgroundColor: Colors.cyanAccent.shade700,
+                content: const Text('Copied! Auto-wiping in 15s...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                backgroundColor: Colors.purpleAccent,
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ));
@@ -290,65 +283,11 @@ Future<void> _verifyBiometric(BuildContext context, String title, String passwor
 
   void _showAddEntryDialog(BuildContext context) {
     HapticFeedback.lightImpact();
-    final titleController = TextEditingController();
-    final emailController = TextEditingController(); 
-    final passController = TextEditingController();
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true, 
-      backgroundColor: const Color(0xFF1A1A1A),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('New Password', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            _buildTextField(titleController, 'Service (e.g. Netflix)', Icons.title),
-            const SizedBox(height: 12),
-            _buildTextField(emailController, 'Username / Email', Icons.person_outline),
-            const SizedBox(height: 12),
-            _buildTextField(passController, 'Password', Icons.password, obscure: true),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent.shade700, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                onPressed: () {
-                  if (titleController.text.isNotEmpty && passController.text.isNotEmpty) {
-                    HapticFeedback.mediumImpact();
-                    Provider.of<VaultProvider>(context, listen: false).addEntryToCategory(widget.categoryId, titleController.text, emailController.text, passController.text);
-                    Navigator.pop(context);
-                  }
-                },
-                child: const Text('Save Entry', style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(TextEditingController controller, String hint, IconData icon, {bool obscure = false}) {
-    return TextField(
-      controller: controller,
-      obscureText: obscure,
-      style: const TextStyle(color: Colors.white),
-      cursorColor: Colors.cyanAccent,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white38),
-        prefixIcon: Icon(icon, color: Colors.white54),
-        filled: true,
-        fillColor: const Color(0xFF2C2C2C),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-      ),
+      backgroundColor: Colors.transparent, 
+      builder: (context) => _AddEntrySheet(categoryId: widget.categoryId),
     );
   }
 
@@ -366,7 +305,7 @@ Future<void> _verifyBiometric(BuildContext context, String title, String passwor
         centerTitle: true,
         actions: [
           IconButton(
-            icon: Icon(isEditMode ? Icons.done_all : Icons.edit_note, color: isEditMode ? Colors.cyanAccent : Colors.white70),
+            icon: Icon(isEditMode ? Icons.done_all : Icons.edit_note, color: isEditMode ? Colors.purpleAccent : Colors.white70),
             onPressed: () {
               HapticFeedback.lightImpact();
               setState(() {
@@ -409,19 +348,18 @@ Future<void> _verifyBiometric(BuildContext context, String title, String passwor
                   duration: const Duration(milliseconds: 200),
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: isSelected ? Colors.cyanAccent.withOpacity(0.1) : const Color(0xFF1A1A1A),
+                    color: isSelected ? Colors.purpleAccent.withOpacity(0.1) : const Color(0xFF1A1A1A),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isSelected ? Colors.cyanAccent : Colors.white.withOpacity(0.05), width: 1.5),
+                    border: Border.all(color: isSelected ? Colors.purpleAccent : Colors.white.withOpacity(0.05), width: 1.5),
                   ),
                   child: ListTile(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     leading: isEditMode
                         ? Checkbox(
                             value: isSelected,
-                            activeColor: Colors.cyanAccent.shade700,
-                            checkColor: Colors.black,
+                            activeColor: Colors.purpleAccent,
+                            checkColor: Colors.white,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                             onChanged: (val) {
                               HapticFeedback.selectionClick();
@@ -431,7 +369,7 @@ Future<void> _verifyBiometric(BuildContext context, String title, String passwor
                         : Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(color: const Color(0xFF2C2C2C), borderRadius: BorderRadius.circular(12)),
-                            child: const Icon(Icons.vpn_key_rounded, color: Colors.cyanAccent),
+                            child: const Icon(Icons.vpn_key_rounded, color: Colors.purpleAccent),
                           ),
                     title: Text(entry.title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
                     subtitle: Text(entry.email, style: const TextStyle(color: Colors.white54)), 
@@ -444,7 +382,7 @@ Future<void> _verifyBiometric(BuildContext context, String title, String passwor
                         HapticFeedback.selectionClick();
                         setState(() => isSelected ? selectedEntryIds.remove(entry.id) : selectedEntryIds.add(entry.id));
                       } else {
-                        _showAuthOptions(context, entry.title, entry.password);
+                        _showAuthOptions(context, entry); // 🛡️ SEC PATCH: Pass entry
                       }
                     },
                   ),
@@ -454,12 +392,178 @@ Future<void> _verifyBiometric(BuildContext context, String title, String passwor
       floatingActionButton: isEditMode
           ? null
           : FloatingActionButton(
-              backgroundColor: Colors.cyanAccent.shade700,
+              backgroundColor: Colors.purpleAccent,
+              foregroundColor: Colors.white,
               elevation: 8,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               onPressed: () => _showAddEntryDialog(context),
-              child: const Icon(Icons.add, color: Colors.black, size: 28),
+              child: const Icon(Icons.add, size: 28),
             ),
+    );
+  }
+}
+
+class _AddEntrySheet extends StatefulWidget {
+  final String categoryId;
+  const _AddEntrySheet({required this.categoryId});
+
+  @override
+  State<_AddEntrySheet> createState() => _AddEntrySheetState();
+}
+
+class _AddEntrySheetState extends State<_AddEntrySheet> {
+  final titleController = TextEditingController();
+  final emailController = TextEditingController(); 
+  final passController = TextEditingController();
+
+  int _strength = 0; 
+
+  @override
+  void dispose() {
+    // 🛡️ SEC PATCH: Destroy controllers and wipe plaintext from heap
+    titleController.clear();
+    titleController.dispose();
+    emailController.clear();
+    emailController.dispose();
+    passController.clear();
+    passController.dispose();
+    super.dispose();
+  }
+
+  void _checkPassword(String pass) {
+    if (pass.isEmpty) {
+      setState(() => _strength = 0);
+      return;
+    }
+
+    bool hasUpper = RegExp(r'[A-Z]').hasMatch(pass);
+    bool hasLower = RegExp(r'[a-z]').hasMatch(pass);
+    bool hasDigit = RegExp(r'[0-9]').hasMatch(pass);
+    bool hasSym   = RegExp(r'[!@#\$&*~_=+^%().,-]').hasMatch(pass);
+    int length    = pass.length;
+
+    if (length >= 8 && hasUpper && hasSym && hasDigit) {
+      setState(() => _strength = 3); 
+    } else if (length >= 8 && hasDigit && hasLower) {
+      setState(() => _strength = 2); 
+    } else {
+      setState(() => _strength = 1); 
+    }
+  }
+
+  Widget _buildTextField(TextEditingController controller, String hint, IconData icon, {bool obscure = false, Function(String)? onChanged}) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      onChanged: onChanged,
+      style: const TextStyle(color: Colors.white),
+      cursorColor: Colors.purpleAccent,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.white38),
+        prefixIcon: Icon(icon, color: Colors.white54),
+        filled: true,
+        fillColor: const Color(0xFF2C2C2C),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+      ),
+    );
+  }
+
+  Widget _buildStrengthMeter() {
+    if (_strength == 0) return const SizedBox.shrink(); 
+
+    Color color1 = const Color(0xFF2C2C2C);
+    Color color2 = const Color(0xFF2C2C2C);
+    Color color3 = const Color(0xFF2C2C2C);
+    String text = "";
+    Color textColor = Colors.white54;
+
+    if (_strength == 1) { 
+      color1 = Colors.redAccent; 
+      text = "Weak Password"; 
+      textColor = Colors.redAccent; 
+    }
+    if (_strength == 2) { 
+      color1 = Colors.orangeAccent; 
+      color2 = Colors.orangeAccent; 
+      text = "Medium Password"; 
+      textColor = Colors.orangeAccent; 
+    }
+    if (_strength == 3) { 
+      color1 = Colors.greenAccent; 
+      color2 = Colors.greenAccent; 
+      color3 = Colors.greenAccent; 
+      text = "Strong Password"; 
+      textColor = Colors.greenAccent; 
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12.0),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: AnimatedContainer(duration: const Duration(milliseconds: 300), height: 6, decoration: BoxDecoration(color: color1, borderRadius: BorderRadius.circular(3)))),
+              const SizedBox(width: 8),
+              Expanded(child: AnimatedContainer(duration: const Duration(milliseconds: 300), height: 6, decoration: BoxDecoration(color: color2, borderRadius: BorderRadius.circular(3)))),
+              const SizedBox(width: 8),
+              Expanded(child: AnimatedContainer(duration: const Duration(milliseconds: 300), height: 6, decoration: BoxDecoration(color: color3, borderRadius: BorderRadius.circular(3)))),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(text, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 24),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('New Password', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 20),
+          _buildTextField(titleController, 'Service (e.g. Netflix)', Icons.title),
+          const SizedBox(height: 12),
+          _buildTextField(emailController, 'Username / Email', Icons.person_outline),
+          const SizedBox(height: 12),
+          _buildTextField(
+            passController, 
+            'Password', 
+            Icons.password, 
+            obscure: true,
+            onChanged: _checkPassword, 
+          ),
+          
+          _buildStrengthMeter(),
+
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+              onPressed: () {
+                if (titleController.text.isNotEmpty && passController.text.isNotEmpty) {
+                  HapticFeedback.mediumImpact();
+                  Provider.of<VaultProvider>(context, listen: false).addEntryToCategory(widget.categoryId, titleController.text, emailController.text, passController.text);
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Save Entry', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(height: 30),
+        ],
+      ),
     );
   }
 }

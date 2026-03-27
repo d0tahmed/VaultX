@@ -41,7 +41,6 @@ class _LockScreenState extends State<LockScreen> {
       setState(() {
         _isLoading = false;
       });
-      // Small delay for smooth startup animation, then auto-prompt
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) _startBiometricAuth();
       });
@@ -61,13 +60,14 @@ class _LockScreenState extends State<LockScreen> {
         localizedReason: 'Scan fingerprint to unlock VaultX',
         options: const AuthenticationOptions(
           stickyAuth: true,
-          biometricOnly: true, // Keeps the Phone PIN fallback disabled!
+          biometricOnly: false, // false = allows OS device PIN fallback after reboot
         ),
       );
 
       if (authenticated && mounted) {
         HapticFeedback.heavyImpact(); 
-        await Provider.of<VaultProvider>(context, listen: false).unlockVault();
+        final sessionPin = await _securityService.getSessionPin();
+        await Provider.of<VaultProvider>(context, listen: false).unlockVault(sessionPin ?? "");
         Navigator.pushReplacement(
           context,
           PageRouteBuilder( 
@@ -79,7 +79,6 @@ class _LockScreenState extends State<LockScreen> {
         );
       }
     } on PlatformException catch (e) {
-      // 🔴 THE REBOOT DETECTOR: If the OS rejects biometrics (often happens after a reboot or lockout)
       debugPrint("Auth Error: ${e.code}");
       if (mounted) {
         HapticFeedback.heavyImpact();
@@ -113,7 +112,7 @@ class _LockScreenState extends State<LockScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.orangeAccent.withOpacity(0.1), shape: BoxShape.circle), child: const Icon(Icons.shield_outlined, size: 80, color: Colors.orangeAccent)),
+                Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.orangeAccent.withValues(alpha: 0.1), shape: BoxShape.circle), child: const Icon(Icons.shield_outlined, size: 80, color: Colors.orangeAccent)),
                 const SizedBox(height: 40),
                 const Text('INITIAL SETUP', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
                 const SizedBox(height: 20),
@@ -146,7 +145,7 @@ class _LockScreenState extends State<LockScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF1A1A1A), boxShadow: [BoxShadow(color: Colors.cyanAccent.withOpacity(0.1), blurRadius: 30, spreadRadius: 10)]),
+              decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF1A1A1A), boxShadow: [BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.1), blurRadius: 30, spreadRadius: 10)]),
               child: const Icon(Icons.lock_outline, size: 80, color: Colors.cyanAccent),
             ),
             const SizedBox(height: 40),
@@ -158,7 +157,7 @@ class _LockScreenState extends State<LockScreen> {
               onTap: _startBiometricAuth,
               child: Container(
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.cyanAccent.withOpacity(0.3), width: 2)),
+                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3), width: 2)),
                 child: const Icon(Icons.fingerprint, size: 60, color: Colors.cyanAccent),
               ),
             ),

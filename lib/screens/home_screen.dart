@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../services/vault_provider.dart';
 import 'category_detail_screen.dart';
 import 'settings_screen.dart'; 
-// 🔴 NEW: Needed for thread-safe SecurityState
+import 'generator_sheet.dart';
+import 'dashboard_screen.dart';
+import 'media_vault_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -53,15 +55,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00E5FF),
-                    foregroundColor: Colors.black,
+                    backgroundColor: Colors.purpleAccent,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () async { // 🔴 MINOR FIX: Added async
+                  onPressed: () async { 
                     if (categoryController.text.trim().isNotEmpty) {
                       HapticFeedback.mediumImpact();
-                      // 🔴 MINOR FIX: Await the encryption/save before closing
                       await Provider.of<VaultProvider>(context, listen: false).addCategory(categoryController.text.trim());
                       if (mounted) Navigator.pop(context);
                     }
@@ -73,6 +74,68 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showActionMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF161618),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (BuildContext modalContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Wrap(
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)))),
+                const Padding(
+                  padding: EdgeInsets.all(24.0),
+                  child: Text('Add to Vault', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                ),
+                
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8), 
+                    decoration: BoxDecoration(color: const Color(0xFF00E5FF).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), 
+                    child: const Icon(Icons.vpn_key, color: Color(0xFF00E5FF))
+                  ),
+                  title: const Text('Generate Password', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
+                  subtitle: const Text('Create a secure, random key', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.pop(modalContext); 
+                    showModalBottomSheet(
+                      context: context,
+                      backgroundColor: Colors.transparent,
+                      isScrollControlled: true,
+                      builder: (context) => const GeneratorSheet(),
+                    );
+                  },
+                ),
+                
+                const SizedBox(height: 8),
+
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8), 
+                    decoration: BoxDecoration(color: Colors.purpleAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), 
+                    child: const Icon(Icons.create_new_folder, color: Colors.purpleAccent)
+                  ),
+                  title: const Text('New Folder', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
+                  subtitle: const Text('Organize your credentials', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.pop(modalContext); 
+                    _showAddCategorySheet(context); 
+                  },
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -94,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text('Manage ${category.name}', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
                 ),
                 ListTile(
-                  leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: const Color(0xFF00E5FF).withOpacity(0.1), borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.edit_outlined, color: Color(0xFF00E5FF))),
+                  leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.purpleAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.edit_outlined, color: Colors.purpleAccent)),
                   title: const Text('Rename Folder', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
                   onTap: () {
                     HapticFeedback.lightImpact();
@@ -103,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
                 ListTile(
-                  leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.delete_outline, color: Colors.redAccent)),
+                  leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.delete_outline, color: Colors.redAccent)),
                   title: const Text('Delete Folder', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w500)),
                   onTap: () {
                     HapticFeedback.heavyImpact();
@@ -137,15 +200,14 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00E5FF), foregroundColor: Colors.black),
-            onPressed: () async { // 🔴 MINOR FIX: Added async
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent, foregroundColor: Colors.white),
+            onPressed: () async { 
               if (nameController.text.trim().isNotEmpty) {
-                // 🔴 MINOR FIX: Await the rename/save
                 await Provider.of<VaultProvider>(context, listen: false).renameCategory(categoryId, nameController.text.trim());
                 if (mounted) Navigator.pop(context);
               }
             },
-            child: const Text('Save'),
+            child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -164,8 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            onPressed: () async { // 🔴 MINOR FIX: Added async
-              // 🔴 MINOR FIX: Await deletion
+            onPressed: () async { 
               await Provider.of<VaultProvider>(context, listen: false).deleteCategory(category.id);
               if (mounted) Navigator.pop(context);
             },
@@ -176,24 +237,129 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Drawer _buildDrawer(BuildContext context) {
+    return Drawer(
+      backgroundColor: const Color(0xFF161618),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: Colors.cyanAccent.withValues(alpha: 0.1), shape: BoxShape.circle),
+                    child: const Icon(Icons.shield_outlined, color: Colors.cyanAccent, size: 32),
+                  ),
+                  const SizedBox(width: 16),
+                  const Text('VaultX', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                ],
+              ),
+            ),
+            const Divider(color: Colors.white10, thickness: 1),
+            const SizedBox(height: 16),
+            
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.cyanAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.pie_chart_outline, color: Colors.cyanAccent),
+              ),
+              title: const Text('Security Dashboard', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.pop(context); 
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const DashboardScreen()));
+              },
+            ),
+            
+            const SizedBox(height: 8),
+
+            Opacity(
+              opacity: 0.4,
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: const Color(0xFF00E5FF).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                  child: const Icon(Icons.folder_special, color: Color(0xFF00E5FF)),
+                ),
+                title: const Text('Password Vault', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                onTap: null, 
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.purpleAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.perm_media, color: Colors.purpleAccent),
+              ),
+              title: const Text('Secure Media', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.pop(context); 
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const MediaVaultScreen()));
+              },
+            ),
+
+            const SizedBox(height: 8),
+
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.settings_outlined, color: Colors.white70),
+              ),
+              title: const Text('Settings', style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500)),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.pop(context); 
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
+              },
+            ),
+            
+            const Spacer(),
+            
+            const Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Text('v1.1.0-Secure', style: TextStyle(color: Colors.white24, fontSize: 12, letterSpacing: 1.2)),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final vault = Provider.of<VaultProvider>(context);
 
     return Scaffold(
+      drawer: _buildDrawer(context),
+      
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.settings_outlined, color: Colors.white70),
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
-          },
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white70, size: 28),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Scaffold.of(context).openDrawer(); 
+            },
+          ),
         ),
         title: const Text('VaultX', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
         centerTitle: true,
         actions: [
+          // 🔴 UI FIX: Changed Icons.edit_note to Icons.edit
           IconButton(
-            icon: Icon(isEditMode ? Icons.close : Icons.edit_note, color: isEditMode ? Colors.redAccent : const Color(0xFF00E5FF)),
+            icon: Icon(isEditMode ? Icons.close : Icons.edit, color: isEditMode ? Colors.redAccent : const Color(0xFF00E5FF)),
             onPressed: () {
               HapticFeedback.lightImpact();
               setState(() {
@@ -205,9 +371,8 @@ class _HomeScreenState extends State<HomeScreen> {
           if (isEditMode && selectedCategoryIds.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
-              onPressed: () async { // 🔴 MINOR FIX: Added async
+              onPressed: () async { 
                 HapticFeedback.heavyImpact();
-                // 🔴 MINOR FIX: Await loop deletions
                 for (var id in selectedCategoryIds) {
                   await vault.deleteCategory(id);
                 }
@@ -242,9 +407,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   duration: const Duration(milliseconds: 200),
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFF00E5FF).withOpacity(0.1) : const Color(0xFF161618),
+                    color: isSelected ? Colors.purpleAccent.withValues(alpha: 0.1) : const Color(0xFF161618),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isSelected ? const Color(0xFF00E5FF) : Colors.transparent, width: 1.5),
+                    border: Border.all(color: isSelected ? Colors.purpleAccent : Colors.transparent, width: 1.5),
                   ),
                   child: ListTile(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -252,8 +417,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     leading: isEditMode
                         ? Checkbox(
                             value: isSelected,
-                            activeColor: const Color(0xFF00E5FF),
-                            checkColor: Colors.black,
+                            activeColor: Colors.purpleAccent,
+                            checkColor: Colors.white,
                             onChanged: (val) {
                               HapticFeedback.selectionClick();
                               setState(() {
@@ -261,7 +426,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               });
                             },
                           )
-                        : const Icon(Icons.folder_special, color: Color(0xFF00E5FF), size: 28),
+                        : const Icon(Icons.folder_special, color: Colors.purpleAccent, size: 28),
                     title: Text(category.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
                     subtitle: Text('${category.entries.length} items', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                     onLongPress: () {
@@ -295,16 +460,17 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
       floatingActionButton: isEditMode
           ? null
-          : FloatingActionButton.extended(
+          : FloatingActionButton(
               backgroundColor: const Color(0xFF00E5FF),
               foregroundColor: Colors.black,
+              elevation: 8,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               onPressed: () {
                 HapticFeedback.lightImpact();
-                _showAddCategorySheet(context);
+                _showActionMenu(context); 
               },
-              icon: const Icon(Icons.add_circle_outline),
-              label: const Text('New Folder', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Icon(Icons.add, size: 32), 
             ),
-    );
-  }
+    ); 
+  } 
 }

@@ -11,7 +11,6 @@ class PasswordEntry {
     required this.password,
   });
 
-  // 🔴 NEW: Converts the object to a Map for JSON encryption
   Map<String, dynamic> toJson() => {
     'id': id,
     'title': title,
@@ -19,7 +18,6 @@ class PasswordEntry {
     'password': password,
   };
 
-  // 🔴 NEW: Rebuilds the object from the decrypted JSON
   factory PasswordEntry.fromJson(Map<String, dynamic> json) => PasswordEntry(
     id: json['id'],
     title: json['title'],

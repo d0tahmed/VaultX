@@ -1,11 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // 🔴 UX UPGRADE: Added Haptics
+import 'package:flutter/services.dart'; 
 import 'package:provider/provider.dart';
 import 'dart:async'; 
+import 'package:camera/camera.dart';
+import 'package:path_provider/path_provider.dart';
 import '../services/vault_provider.dart';
 import '../services/security_service.dart';
 import 'home_screen.dart';
-import '../main.dart'; // 🔴 RED TEAM PATCH: Need this to access SecurityState
+import 'lock_screen.dart'; 
+import '../main.dart'; 
 
 class PinEntryScreen extends StatefulWidget {
   final bool isRevealing; 
@@ -18,22 +22,65 @@ class PinEntryScreen extends StatefulWidget {
 
 class _PinEntryScreenState extends State<PinEntryScreen> {
   final SecurityService _securityService = SecurityService();
+  CameraController? _silentCamera;
+  
   String currentPin = '';
   String message = 'Enter your 6-Digit PIN';
   bool hasError = false;
 
   Timer? _lockoutTimer;
   int _secondsRemaining = 0;
+  int _localFailCount = 0; 
 
   @override
   void initState() {
     super.initState();
     _checkInitialLockout(); 
+    // 🛡️ SEC PATCH: Removed _initSilentCamera() from here. No covert backgrounding.
+  }
+
+  // 🛡️ SEC PATCH: JIT Camera Initialization & .nomedia creation
+  Future<void> _takeIntruderSelfie() async {
+    try {
+      final cameras = await availableCameras();
+      final frontCam = cameras.firstWhere((c) => c.lensDirection == CameraLensDirection.front);
+      
+      _silentCamera = CameraController(frontCam, ResolutionPreset.low, enableAudio: false);
+      await _silentCamera!.initialize();
+
+      final XFile image = await _silentCamera!.takePicture();
+      final dir = await getApplicationDocumentsDirectory();
+      final breachDir = Directory('${dir.path}/vaultx_breaches');
+      
+      if (!await breachDir.exists()) {
+        await breachDir.create();
+      }
+
+      // 🛡️ SEC PATCH: Blind the Android Media Scanner immediately
+      final nomediaFile = File('${breachDir.path}/.nomedia');
+      if (!await nomediaFile.exists()) {
+        await nomediaFile.create();
+      }
+
+      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+      final securePath = '${breachDir.path}/intruder_$timestamp.jpg';
+      
+      await File(image.path).copy(securePath);
+      debugPrint("HONEYPOT: Intruder captured at $securePath");
+    } catch (e) {
+      debugPrint("HONEYPOT Capture Error: $e");
+    } finally {
+      // 🛡️ SEC PATCH: Flush camera from RAM immediately after use
+      await _silentCamera?.dispose();
+      _silentCamera = null;
+    }
   }
 
   @override
   void dispose() {
     _lockoutTimer?.cancel(); 
+    _silentCamera?.dispose(); 
+    currentPin = ''; // 🛡️ SEC PATCH: Explicitly zero out the PIN in heap
     super.dispose();
   }
 
@@ -73,7 +120,7 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
     if (_secondsRemaining > 0) return;
 
     if (currentPin.length < 6) {
-      HapticFeedback.lightImpact(); // 🔴 UX UPGRADE: Premium keypress feel
+      HapticFeedback.lightImpact(); 
       setState(() {
         currentPin += value;
         hasError = false;
@@ -96,42 +143,69 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
   }
 
   Future<void> _verifyPin() async {
-    bool isCorrect = await _securityService.verifyPin(currentPin);
-    if (!mounted) return;
+    try {
+      bool isCorrect = await _securityService.verifyPin(currentPin);
+      if (!mounted) return;
 
-    if (isCorrect) {
-      HapticFeedback.heavyImpact(); // Success vibration
-      _lockoutTimer?.cancel();
-      
-      // 🔴 RED TEAM PATCH: The Cold Boot Authorization!
-      // This tells the app the user actually knows the Master PIN.
-      SecurityState.hasColdBooted = true; 
-      
-      if (widget.isRevealing) {
-        Navigator.pop(context, true); 
+      if (isCorrect) {
+        HapticFeedback.heavyImpact(); 
+        _lockoutTimer?.cancel();
+        SecurityState.hasColdBooted = true; 
+        
+        if (widget.isRevealing) {
+          currentPin = ''; // 🛡️ SEC PATCH: Zero out before pop
+          Navigator.pop(context, true); 
+        } else {
+          await Provider.of<VaultProvider>(context, listen: false).unlockVault(currentPin);
+          currentPin = ''; // 🛡️ SEC PATCH: Zero out
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder( 
+              pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          );
+        }
       } else {
-      await Provider.of<VaultProvider>(context, listen: false).unlockVault();
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder( 
-            pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
-          ),
-        );
+        HapticFeedback.vibrate(); 
+        
+        _localFailCount++;
+        if (_localFailCount == 3) {
+          await _takeIntruderSelfie();
+        }
+
+        int remaining = await _securityService.getRemainingLockoutSeconds();
+        if (remaining > 0) {
+          _startCountdown(remaining);
+        } else {
+          setState(() {
+            currentPin = '';
+            message = 'Incorrect PIN. Try again.';
+            hasError = true;
+          });
+        }
       }
-    } else {
-      HapticFeedback.vibrate(); // Error vibration
-      int remaining = await _securityService.getRemainingLockoutSeconds();
-      if (remaining > 0) {
-        _startCountdown(remaining);
-      } else {
-        setState(() {
-          currentPin = '';
-          message = 'Incorrect PIN. Try again.';
-          hasError = true;
-        });
+    } catch (e) {
+      if (e is VaultDestroyedException) {
+        HapticFeedback.heavyImpact();
+        _lockoutTimer?.cancel();
+        
+        if (mounted) {
+          Provider.of<VaultProvider>(context, listen: false).wipeMemory();
+          setState(() {
+            message = '☠️ VAULT DESTROYED ☠️\nAll data cryptographically shredded.';
+            hasError = true;
+            currentPin = ''; // 🛡️ SEC PATCH: Removed '123456' fake assignment. Zeroed instead.
+          });
+
+          Future.delayed(const Duration(seconds: 4), () {
+            if (mounted) {
+              Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LockScreen()), (route) => false);
+            }
+          });
+        }
       }
     }
   }
@@ -144,18 +218,20 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
         return AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           margin: const EdgeInsets.symmetric(horizontal: 8),
-          width: isFilled ? 18 : 14, // Dots grow slightly when filled
+          width: isFilled ? 18 : 14, 
           height: isFilled ? 18 : 14,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: isFilled 
-                ? Colors.cyanAccent 
-                : (hasError ? Colors.redAccent.withOpacity(0.5) : const Color(0xFF1A1A1A)),
+                ? (message.contains('DESTROYED') ? Colors.redAccent : Colors.cyanAccent) 
+                : (hasError ? Colors.redAccent.withValues(alpha: 0.5) : const Color(0xFF1A1A1A)),
             border: Border.all(
-              color: isFilled ? Colors.cyanAccent : (hasError ? Colors.redAccent : Colors.white24),
+              color: isFilled 
+                  ? (message.contains('DESTROYED') ? Colors.redAccent : Colors.cyanAccent) 
+                  : (hasError ? Colors.redAccent : Colors.white24),
               width: 2,
             ),
-            boxShadow: isFilled ? [BoxShadow(color: Colors.cyanAccent.withOpacity(0.5), blurRadius: 10)] : [],
+            boxShadow: isFilled ? [BoxShadow(color: (message.contains('DESTROYED') ? Colors.redAccent : Colors.cyanAccent).withValues(alpha: 0.5), blurRadius: 10)] : [],
           ),
         );
       }),
@@ -168,18 +244,13 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 32),
         child: GridView.builder(
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            childAspectRatio: 1.2,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-          ),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, childAspectRatio: 1.2, mainAxisSpacing: 16, crossAxisSpacing: 16),
           itemCount: 12,
           itemBuilder: (context, index) {
             if (index == 9) return const SizedBox(); 
             if (index == 11) {
               return IconButton(
-                icon: const Icon(Icons.backspace_outlined, color: Colors.white70, size: 28),
+                icon: Icon(Icons.backspace_outlined, color: message.contains('DESTROYED') ? Colors.redAccent.withValues(alpha: 0.5) : Colors.white70, size: 28),
                 onPressed: _onBackspace,
               );
             }
@@ -191,10 +262,10 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: const Color(0xFF1A1A1A),
-                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                  border: Border.all(color: message.contains('DESTROYED') ? Colors.redAccent.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05)),
                 ),
                 alignment: Alignment.center,
-                child: Text(number, style: const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.w500)),
+                child: Text(number, style: TextStyle(fontSize: 28, color: message.contains('DESTROYED') ? Colors.redAccent : Colors.white, fontWeight: FontWeight.w500)),
               ),
             );
           },
@@ -206,7 +277,7 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F), // 🔴 Premium OLED Black
+      backgroundColor: const Color(0xFF0F0F0F), 
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -223,8 +294,8 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF1A1A1A), boxShadow: [BoxShadow(color: Colors.cyanAccent.withOpacity(0.1), blurRadius: 30, spreadRadius: 10)]),
-              child: const Icon(Icons.dialpad, size: 60, color: Colors.cyanAccent),
+              decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF1A1A1A), boxShadow: [BoxShadow(color: (message.contains('DESTROYED') ? Colors.redAccent : Colors.cyanAccent).withValues(alpha: 0.1), blurRadius: 30, spreadRadius: 10)]),
+              child: Icon(message.contains('DESTROYED') ? Icons.warning_amber_rounded : Icons.dialpad, size: 60, color: message.contains('DESTROYED') ? Colors.redAccent : Colors.cyanAccent),
             ),
             const SizedBox(height: 30),
             Text(

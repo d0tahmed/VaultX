@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // 🔴 UX UPGRADE: Added Haptics
+import 'package:flutter/services.dart'; 
 import 'package:provider/provider.dart';
 import '../services/security_service.dart';
-import '../services/vault_provider.dart'; // 🔴 RED TEAM PATCH: Needed to mount the vault
+import '../services/vault_provider.dart'; 
 import 'home_screen.dart'; 
 
 class PinSetupScreen extends StatefulWidget {
-  // 🔴 RED TEAM PATCH: Tells the screen if we are updating an old PIN from Settings
   final bool isChangingPin; 
   
   const PinSetupScreen({super.key, this.isChangingPin = false});
@@ -30,7 +29,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
   }
 
   void _onKeyPressed(String value) {
-    HapticFeedback.lightImpact(); // Premium keypress feel
+    HapticFeedback.lightImpact(); 
     setState(() {
       if (!isConfirming) {
         if (firstPin.length < 6) firstPin += value;
@@ -56,7 +55,6 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
       } else if (isConfirming && confirmPin.isNotEmpty) {
         confirmPin = confirmPin.substring(0, confirmPin.length - 1);
       } else if (isConfirming && confirmPin.isEmpty) {
-        // Go back to step 1 if they backspace an empty confirm screen
         isConfirming = false;
         firstPin = '';
         message = widget.isChangingPin ? 'Create a NEW 6-Digit PIN' : 'Create a 6-Digit Vault PIN';
@@ -64,22 +62,25 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
     });
   }
 
+@override
+  void dispose() {
+    // 🛡️ SEC PATCH: Wipe initial setup PINs from heap
+    firstPin = '';
+    confirmPin = '';
+    super.dispose();
+  }
+
   Future<void> _verifyAndSavePin() async {
     if (firstPin == confirmPin) {
-      HapticFeedback.heavyImpact(); // Success vibration
+      HapticFeedback.heavyImpact(); 
       final vault = Provider.of<VaultProvider>(context, listen: false);
 
       if (widget.isChangingPin) {
-        // 🔴 SECURITY PATCH: If changing from settings, we must re-encrypt the data!
-        // We save the PIN, and then tell the VaultProvider to re-encrypt the active data.
         await _securityService.savePin(firstPin);
-        
-        // NOTE: Make sure your VaultProvider has a changeMasterPin method!
-        // await vault.changeMasterPin(firstPin); 
+        await vault.changeMasterPin(firstPin); 
       } else {
-        // 🔴 SECURITY PATCH: First time setup. Save PIN, then mount the empty vault!
         await _securityService.savePin(firstPin);
-        await vault.unlockVault(); 
+        await vault.unlockVault(firstPin); 
       }
 
       if (!mounted) return;
@@ -95,15 +96,17 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
+
+      firstPin = '';
+      confirmPin = '';
       
-      // Push and Remove Until clears the navigation stack so the user can't hit "Back" to the setup screen
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
         (route) => false,
       );
     } else {
-      HapticFeedback.vibrate(); // Error vibration
+      HapticFeedback.vibrate(); 
       setState(() {
         firstPin = '';
         confirmPin = '';
@@ -113,7 +116,6 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
     }
   }
 
-  // 🔴 UX UPGRADE: Glowing Cyan Pin Indicator
   Widget _buildPinIndicator(String currentPin) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -127,38 +129,26 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: isFilled ? Colors.cyanAccent : const Color(0xFF1A1A1A),
-            border: Border.all(
-              color: isFilled ? Colors.cyanAccent : Colors.white24,
-              width: 2,
-            ),
-            boxShadow: isFilled ? [BoxShadow(color: Colors.cyanAccent.withOpacity(0.5), blurRadius: 10)] : [],
+            border: Border.all(color: isFilled ? Colors.cyanAccent : Colors.white24, width: 2),
+            boxShadow: isFilled ? [BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.5), blurRadius: 10)] : [],
           ),
         );
       }),
     );
   }
 
-  // 🔴 UX UPGRADE: Premium Glassmorphism Numpad
   Widget _buildNumpad() {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 32),
         child: GridView.builder(
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            childAspectRatio: 1.2,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-          ),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, childAspectRatio: 1.2, mainAxisSpacing: 16, crossAxisSpacing: 16),
           itemCount: 12,
           itemBuilder: (context, index) {
             if (index == 9) return const SizedBox(); 
             if (index == 11) {
-              return IconButton(
-                icon: const Icon(Icons.backspace_outlined, color: Colors.white70, size: 28),
-                onPressed: _onBackspace,
-              );
+              return IconButton(icon: const Icon(Icons.backspace_outlined, color: Colors.white70, size: 28), onPressed: _onBackspace);
             }
             final number = index == 10 ? '0' : '${index + 1}';
             return InkWell(
@@ -168,7 +158,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: const Color(0xFF1A1A1A),
-                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                 ),
                 alignment: Alignment.center,
                 child: Text(number, style: const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.w500)),
@@ -183,7 +173,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F), // Premium OLED Black
+      backgroundColor: const Color(0xFF0F0F0F), 
       body: SafeArea(
         child: Column(
           children: [
@@ -193,15 +183,12 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle, 
                 color: const Color(0xFF1A1A1A), 
-                boxShadow: [BoxShadow(color: Colors.cyanAccent.withOpacity(0.1), blurRadius: 30, spreadRadius: 10)]
+                boxShadow: [BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.1), blurRadius: 30, spreadRadius: 10)]
               ),
               child: const Icon(Icons.shield_outlined, size: 60, color: Colors.cyanAccent),
             ),
             const SizedBox(height: 30),
-            Text(
-              message, 
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 1.2)
-            ),
+            Text(message, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 1.2)),
             const SizedBox(height: 40),
             _buildPinIndicator(isConfirming ? confirmPin : firstPin),
             const SizedBox(height: 60),

@@ -9,7 +9,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 class SecurityState {
   static bool isAuthenticating = false;
   static bool requiresAuth = false; 
-  static bool hasColdBooted = false; // 🔴 NEW: Tracks if this is a fresh launch
+  static bool hasColdBooted = false; 
 }
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,32 +53,23 @@ class _VaultXAppState extends State<VaultXApp> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  // --- THE ZERO-LAG WATCHDOG ---
-  // --- THE RED TEAM WATCHDOG ---
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // 🔴 THE FIX: 'inactive' fires the millisecond you start swiping up or get a phone call.
-    // 'paused' is too late. We strike at 'inactive' or 'hidden'.
-    if (state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) {
+    if (state == AppLifecycleState.paused) {
       if (!SecurityState.isAuthenticating) {
-        
-        // 1. Wipe the decrypted data from RAM instantly
         final context = navigatorKey.currentContext;
         if (context != null) {
           Provider.of<VaultProvider>(context, listen: false).wipeMemory();
-          
-          // 2. Aggressively pop all screens to destroy the UI rendering tree
-          // This prevents the OS from caching visual text in memory
           navigatorKey.currentState?.pushAndRemoveUntil(
             PageRouteBuilder(
               pageBuilder: (context, animation, secondaryAnimation) => const LockScreen(),
-              transitionDuration: Duration.zero, // Instant snap, no animations
+              transitionDuration: Duration.zero,
             ),
             (route) => false,
           );
         }
       }
-    } 
+    }
   }
 
   @override
@@ -87,7 +78,7 @@ class _VaultXAppState extends State<VaultXApp> with WidgetsBindingObserver {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Scaffold(
-          backgroundColor: const Color(0xFF0F0F0F), // OLED Black
+          backgroundColor: const Color(0xFF0F0F0F),
           body: Padding(
             padding: const EdgeInsets.all(30.0),
             child: Column(
@@ -95,17 +86,9 @@ class _VaultXAppState extends State<VaultXApp> with WidgetsBindingObserver {
               children: [
                 const Icon(Icons.gpp_bad, size: 100, color: Colors.redAccent),
                 const SizedBox(height: 30),
-                const Text(
-                  'ENVIRONMENT COMPROMISED',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                ),
+                const Text('ENVIRONMENT COMPROMISED', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 20),
-                const Text(
-                  'VaultX has detected that this device is Rooted. For your security, the app cannot run in a compromised environment.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white54, fontSize: 16),
-                ),
+                const Text('VaultX has detected that this device is Rooted.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 16)),
               ],
             ),
           ),
@@ -117,26 +100,18 @@ class _VaultXAppState extends State<VaultXApp> with WidgetsBindingObserver {
       navigatorKey: navigatorKey, 
       debugShowCheckedModeBanner: false,
       title: 'VaultX',
-      // 🔴 UX UPGRADE: Global Premium Theme!
       theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF0F0F0F), // Deep OLED black
+        scaffoldBackgroundColor: const Color(0xFF0F0F0F),
         primaryColor: Colors.cyanAccent,
         colorScheme: const ColorScheme.dark(
           primary: Colors.cyanAccent,
           secondary: Colors.cyanAccent,
-          surface: Color(0xFF1A1A1A), // Floating card color
+          surface: Color(0xFF1A1A1A), 
         ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-        ),
+        appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0),
       ),
       home: _checkingRoot 
-          ? const Scaffold(
-              backgroundColor: Color(0xFF0F0F0F),
-              body: Center(child: CircularProgressIndicator(color: Colors.cyanAccent))
-            ) 
-          // 🔴 FIX: LockScreen called here at startup
+          ? const Scaffold(backgroundColor: Color(0xFF0F0F0F), body: Center(child: CircularProgressIndicator(color: Colors.cyanAccent))) 
           : const LockScreen(), 
     );
   }
