@@ -1,19 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-<uses-permission android:name="android.permission.USE_BIOMETRIC"/>
-<uses-permission android:name="android.permission.CAMERA" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <application
         android:label="vaultx"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
-        android:allowBackup="false"          android:fullBackupContent="false">   ```
-
-That instantly secures the database from being corrupted during a cloud transfer.
-
-To fix **Flaws 1 and 3**, we need to get our hands a little dirty. We can either:
-1. Write the **Kotlin Native Code** to permanently hide the Android 13+ clipboard preview.
-2. Rewrite the `LockScreen` logic to implement **"PIN on Cold Boot"** to block the Biometric bypass.
-
-Which vulnerability do you want me to write the exploit-patch for first?
+        android:allowBackup="false"
+        android:fullBackupContent="false">
+        
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -23,10 +20,7 @@ Which vulnerability do you want me to write the exploit-patch for first?
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-            <!-- Specifies an Android theme to apply to this Activity as soon as
-                 the Android process has started. This theme is visible to the user
-                 while the Flutter UI initializes. After that, this theme continues
-                 to determine the Window background behind the Flutter UI. -->
+            
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
@@ -36,17 +30,12 @@ Which vulnerability do you want me to write the exploit-patch for first?
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- Don't delete the meta-data below.
-             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
-    <!-- Required to query activities that can process text, see:
-         https://developer.android.com/training/package-visibility and
-         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
 
-         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>

@@ -32,6 +32,7 @@ dependencies:
   video_player: ^2.11.1
   chewie: ^1.13.0
   camera: ^0.12.0+1
+  permission_handler: ^12.0.1
 
 dev_dependencies:
   flutter_test:
@@ -47,7 +48,12 @@ dependency_overrides:
 
 flutter_launcher_icons:
   android: "launcher_icon"
-  ios: false # 🔴 CHANGE THIS TO FALSE
-  image_path: "assets/icon.png" # Or "lib/assets/icon.png" if you didn't move it
+  ios: false
+  image_path: "assets/icon.png" 
   adaptive_icon_background: "#0F0F0F"
-  adaptive_icon_foreground: "assets/icon.png" # Or "lib/assets/icon.png"
+  adaptive_icon_foreground: "assets/icon.png"
+  web:
+    generate: true
+    image_path: "assets/icon.png"
+    background_color: "#0F0F0F"
+    theme_color: "#0F0F0F"

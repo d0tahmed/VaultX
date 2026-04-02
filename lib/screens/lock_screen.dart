@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; 
 import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart'; // 🛡️ SEC PATCH: Added for upfront permissions
 import '../services/vault_provider.dart'; 
 import '../services/security_service.dart';
 import '../main.dart'; 
@@ -29,6 +30,15 @@ class _LockScreenState extends State<LockScreen> {
   }
 
   Future<void> _checkSetupStatus() async {
+    // 🛡️ SEC PATCH: Request Camera Permission UPFRONT.
+    // If the user grants "Every time", the Honeypot works silently forever.
+    // If they grant "Only this time", this code will naturally ask again on the next boot.
+    // This guarantees the intruder never sees a permission pop-up!
+    final cameraStatus = await Permission.camera.status;
+    if (!cameraStatus.isGranted) {
+      await Permission.camera.request();
+    }
+
     bool hasPin = await _securityService.hasPinSet();
     if (!mounted) return;
 
@@ -60,7 +70,7 @@ class _LockScreenState extends State<LockScreen> {
         localizedReason: 'Scan fingerprint to unlock VaultX',
         options: const AuthenticationOptions(
           stickyAuth: true,
-          biometricOnly: false, // false = allows OS device PIN fallback after reboot
+          biometricOnly: false, 
         ),
       );
 
