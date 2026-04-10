@@ -1,12 +1,14 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/vault_provider.dart';
 import '../models/password_entry.dart';
 import '../services/hibp_service.dart';
+import '../theme/app_theme.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -15,27 +17,32 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen> with TickerProviderStateMixin {
   bool _isScanning = false;
-  bool _isDisposed = false; // 🛡️ SEC PATCH: Cancellation Token
-  Map<String, int> _pwnedCache = {}; 
-  
-  int _selectedTab = 0; 
+  bool _isDisposed = false;
+  Map<String, int> _pwnedCache = {};
   List<File> _breachLogs = [];
-  bool _isLoadingLogs = true;
+
+  late AnimationController _gaugeAnimCtrl;
+  late Animation<double> _gaugeAnim;
 
   @override
   void initState() {
     super.initState();
+    _gaugeAnimCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _gaugeAnim = CurvedAnimation(parent: _gaugeAnimCtrl, curve: Curves.easeOutCubic);
     _loadBreachLogs();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) _gaugeAnimCtrl.forward();
+    });
   }
 
   @override
   void dispose() {
-    // 🛡️ SEC PATCH: Prevent async leaks and memory scraping
-    _isDisposed = true; 
+    _isDisposed = true;
     _pwnedCache.clear();
     _breachLogs.clear();
+    _gaugeAnimCtrl.dispose();
     super.dispose();
   }
 
@@ -43,27 +50,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final breachDir = Directory('${dir.path}/vaultx_breaches');
-      
       if (await breachDir.exists()) {
         final List<FileSystemEntity> entities = await breachDir.list().toList();
         final List<File> files = entities.whereType<File>().where((f) => f.path.endsWith('.jpg')).toList();
-        
         files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
-        
-        if (!_isDisposed) {
-          setState(() {
-            _breachLogs = files;
-          });
-        }
+        if (!_isDisposed) setState(() => _breachLogs = files);
       }
     } catch (e) {
       debugPrint("Error loading breach logs: $e");
     } finally {
-      if (!_isDisposed) {
-        setState(() {
-          _isLoadingLogs = false;
-        });
-      }
+      // loading complete
     }
   }
 
@@ -72,7 +68,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       if (await file.exists()) {
         await file.delete();
-        if (!_isDisposed) _loadBreachLogs(); 
+        if (!_isDisposed) _loadBreachLogs();
       }
     } catch (e) {
       debugPrint("Error deleting log: $e");
@@ -86,25 +82,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     bool hasDigit = RegExp(r'[0-9]').hasMatch(pass);
     bool hasSym   = RegExp(r'[!@#\$&*~_=+^%().,-]').hasMatch(pass);
     int length    = pass.length;
-
-    if (length >= 8 && hasUpper && hasSym && hasDigit) return 3; 
-    if (length >= 8 && hasDigit && hasLower) return 2; 
-    return 1; 
+    if (length >= 8 && hasUpper && hasSym && hasDigit) return 3;
+    if (length >= 8 && hasDigit && hasLower) return 2;
+    return 1;
   }
 
   Future<void> _runDeepScan(List<PasswordCategory> categories) async {
     if (_isDisposed) return;
     setState(() => _isScanning = true);
     HapticFeedback.mediumImpact();
-
     Map<String, int> results = {};
     int foundLeaks = 0;
-
     for (var cat in categories) {
       for (var entry in cat.entries) {
-        // 🛡️ SEC PATCH: Abort loop immediately if widget is killed
-        if (_isDisposed) return; 
-        
+        if (_isDisposed) return;
         int breachCount = await HIBPService.checkPassword(entry.password);
         if (breachCount > 0) {
           results[entry.id] = breachCount;
@@ -112,18 +103,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
     }
-
     if (mounted && !_isDisposed) {
-      setState(() {
-        _pwnedCache = results;
-        _isScanning = false;
-      });
-
+      setState(() { _pwnedCache = results; _isScanning = false; });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(foundLeaks > 0 ? 'Deep Scan Complete: Found $foundLeaks leaked passwords!' : 'Deep Scan Complete: No leaks found!'),
-          backgroundColor: foundLeaks > 0 ? Colors.redAccent : Colors.cyanAccent.shade700,
-          behavior: SnackBarBehavior.floating,
+          content: Text(foundLeaks > 0 ? 'Deep Scan Complete: Found $foundLeaks leaked passwords!' : 'Deep Scan Complete: No leaks found!',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+          backgroundColor: foundLeaks > 0 ? VaultColors.error : VaultColors.tertiaryContainer,
         ),
       );
     }
@@ -131,75 +117,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white70, size: 20), onPressed: () => Navigator.pop(context)),
-        title: const Text('Security Center', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(color: const Color(0xFF161618), borderRadius: BorderRadius.circular(12)),
-              child: Row(
-                children: [
-                  Expanded(child: _buildTabButton("Password Audit", 0, Icons.shield)),
-                  Expanded(child: _buildTabButton("Breach Logs", 1, Icons.camera_front)),
-                ],
-              ),
-            ),
-          ),
-          
-          Expanded(
-            child: _selectedTab == 0 ? _buildAuditTab() : _buildBreachLogsTab(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabButton(String title, int index, IconData icon) {
-    bool isSelected = _selectedTab == index;
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        setState(() => _selectedTab = index);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? (index == 0 ? Colors.cyanAccent.withValues(alpha: 0.1) : Colors.redAccent.withValues(alpha: 0.1)) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: isSelected ? (index == 0 ? Colors.cyanAccent : Colors.redAccent) : Colors.white54),
-            const SizedBox(width: 8),
-            Text(title, style: TextStyle(color: isSelected ? (index == 0 ? Colors.cyanAccent : Colors.redAccent) : Colors.white54, fontWeight: FontWeight.bold, fontSize: 13)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAuditTab() {
     final vault = Provider.of<VaultProvider>(context);
+
+    // Compute stats
+    int totalEntries = 0;
+    int totalCategories = vault.categories.length;
+    int totalMedia = 0;
     int strongCount = 0, mediumCount = 0, weakCount = 0;
     List<Map<String, dynamic>> vulnerableAccounts = [];
 
+    for (var folder in vault.mediaFolders) {
+      totalMedia += folder.items.length;
+    }
+
     for (var cat in vault.categories) {
       for (var entry in cat.entries) {
+        totalEntries++;
         int strength = _calculateStrength(entry.password);
         bool isPwned = _pwnedCache.containsKey(entry.id);
-
         if (strength == 3 && !isPwned) {
           strongCount++;
         } else if (isPwned || strength == 1) {
@@ -207,225 +142,436 @@ class _DashboardScreenState extends State<DashboardScreen> {
           vulnerableAccounts.add({'entry': entry, 'category': cat.name, 'strength': 1, 'pwned': isPwned ? _pwnedCache[entry.id] : 0});
         } else {
           mediumCount++;
-          vulnerableAccounts.add({'entry': entry, 'category': cat.name, 'strength': 2, 'pwned': 0});
         }
       }
     }
 
     int total = strongCount + mediumCount + weakCount;
-    double strongPct = total == 0 ? 0 : (strongCount / total) * 100;
+    double securityScore = total == 0 ? 100 : ((strongCount / total) * 100);
 
-    if (total == 0) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.pie_chart_outline, size: 80, color: Color(0xFF222225)),
-            SizedBox(height: 16),
-            Text('Vault is empty. Add passwords to audit.', style: TextStyle(color: Colors.grey, fontSize: 16)),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            _isScanning 
-              ? const Padding(padding: EdgeInsets.symmetric(horizontal: 24), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.cyanAccent)))
-              : TextButton.icon(
-                  onPressed: () => _runDeepScan(vault.categories),
-                  icon: const Icon(Icons.radar, color: Colors.cyanAccent, size: 18),
-                  label: const Text("Deep Scan", style: TextStyle(color: Colors.cyanAccent)),
-                ),
-          ],
-        ),
-        _buildChart(strongPct, strongCount, mediumCount, weakCount),
-        _buildStatsRow(strongCount, mediumCount, weakCount),
-        const Divider(color: Colors.white10, thickness: 1, indent: 24, endIndent: 24),
-        _buildVulnerabilityList(vulnerableAccounts),
-      ],
-    );
-  }
-
-  Widget _buildBreachLogsTab() {
-    if (_isLoadingLogs) {
-      return const Center(child: CircularProgressIndicator(color: Colors.redAccent));
-    }
-
-    if (_breachLogs.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.security, size: 80, color: Color(0xFF222225)),
-            SizedBox(height: 16),
-            Text('No breach attempts detected.', style: TextStyle(color: Colors.grey, fontSize: 16)),
-            Text('Your physical device is secure.', style: TextStyle(color: Colors.white38, fontSize: 12)),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      itemCount: _breachLogs.length,
-      itemBuilder: (context, index) {
-        final file = _breachLogs[index];
-        final filename = file.path.split('/').last;
-        final rawTime = filename.replaceAll('intruder_', '').replaceAll('.jpg', '');
-        final displayTime = rawTime.replaceAll('T', ' at ').replaceAll('-', ':');
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF161618),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.1), borderRadius: const BorderRadius.vertical(top: Radius.circular(16))),
+    return Scaffold(
+      backgroundColor: VaultColors.background,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // Sticky Top Bar
+          SliverToBoxAdapter(
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 20),
-                        const SizedBox(width: 8),
-                        Text('UNAUTHORIZED ACCESS', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1.2)),
-                      ],
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.white54, size: 20),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () => _deleteLog(file),
-                    )
+                    Row(children: [
+                      const Icon(Icons.shield, color: VaultColors.primaryContainer, size: 22),
+                      const SizedBox(width: 10),
+                      Text('VAULTX', style: GoogleFonts.manrope(
+                        fontSize: 18, fontWeight: FontWeight.w800, color: VaultColors.primaryContainer,
+                        letterSpacing: 3,
+                      )),
+                    ]),
+                    _isScanning
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: VaultColors.primaryContainer))
+                      : IconButton(
+                          icon: const Icon(Icons.radar, color: VaultColors.primaryContainer, size: 22),
+                          tooltip: 'Deep Scan',
+                          onPressed: () => _runDeepScan(vault.categories),
+                        ),
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(file, width: 80, height: 100, fit: BoxFit.cover),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text("Attempted unlocking using incorrect PIN 3 times.", style: TextStyle(color: Colors.white70, fontSize: 13)),
-                          const SizedBox(height: 16),
-                          Text("TIMESTAMP", style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                          const SizedBox(height: 2),
-                          Text(displayTime, style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace')),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildChart(double pct, int strong, int med, int weak) {
-    return SizedBox(
-      height: 250,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          PieChart(
-            PieChartData(
-              sectionsSpace: 4,
-              centerSpaceRadius: 80,
-              sections: [
-                PieChartSectionData(color: Colors.cyanAccent.shade700, value: strong.toDouble(), radius: 20, title: ''),
-                PieChartSectionData(color: Colors.orangeAccent, value: med.toDouble(), radius: 25, title: ''),
-                PieChartSectionData(color: Colors.redAccent, value: weak.toDouble(), radius: 30, title: ''),
-              ],
             ),
           ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('${pct.toInt()}%', style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900)),
-              const Text('Secure', style: TextStyle(color: Colors.cyanAccent, fontSize: 14, fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildStatsRow(int strong, int med, int weak) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatBadge('$strong', 'Strong', Colors.cyanAccent),
-          _buildStatBadge('$med', 'Medium', Colors.orangeAccent),
-          _buildStatBadge('$weak', 'Risky', Colors.redAccent),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVulnerabilityList(List<Map<String, dynamic>> accounts) {
-    return Expanded(
-      child: accounts.isEmpty
-          ? const Center(child: Text('All accounts are secure!', style: TextStyle(color: Colors.cyanAccent)))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: accounts.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) return const Padding(padding: EdgeInsets.all(8), child: Text('ACTION REQUIRED', style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.bold)));
-                
-                final item = accounts[index - 1];
-                final PasswordEntry entry = item['entry'];
-                final int pwnedCount = item['pwned'] ?? 0;
-                final bool isPwned = pwnedCount > 0;
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF161618),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isPwned ? Colors.redAccent : (item['strength'] == 1 ? Colors.redAccent.withValues(alpha: 0.3) : Colors.orangeAccent.withValues(alpha: 0.3))),
+          // Header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('SYSTEM STATUS', style: VaultTypography.labelSm.copyWith(
+                    letterSpacing: 3, color: VaultColors.onSurfaceVariant,
+                  )),
+                  const SizedBox(height: 6),
+                  Text('Digital Sanctuary', style: VaultTypography.displayLg),
+                  const SizedBox(height: 12),
+                  // AES badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: VaultColors.tertiary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(VaultRadius.full),
+                      border: Border.all(color: VaultColors.tertiary.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.verified_user, color: VaultColors.tertiary, size: 14),
+                      const SizedBox(width: 8),
+                      Text('AES-256 ENCRYPTION ACTIVE', style: GoogleFonts.inter(
+                        fontSize: 11, fontWeight: FontWeight.w700, color: VaultColors.tertiary, letterSpacing: 1,
+                      )),
+                      const SizedBox(width: 8),
+                      Container(width: 6, height: 6, decoration: const BoxDecoration(
+                        shape: BoxShape.circle, color: VaultColors.tertiary,
+                      )),
+                    ]),
                   ),
-                  child: ListTile(
-                    leading: Icon(isPwned ? Icons.report_problem : Icons.warning_amber_rounded, color: isPwned ? Colors.redAccent : (item['strength'] == 1 ? Colors.redAccent : Colors.orangeAccent)),
-                    title: Text(entry.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    subtitle: Text(isPwned ? 'LEAKED $pwnedCount TIMES' : 'In Folder: ${item['category']}', style: TextStyle(color: isPwned ? Colors.redAccent : Colors.white54, fontSize: 12, fontWeight: isPwned ? FontWeight.bold : FontWeight.normal)),
-                    trailing: Text(isPwned ? 'PWNED' : (item['strength'] == 1 ? 'WEAK' : 'MEDIUM'), style: TextStyle(color: isPwned || item['strength'] == 1 ? Colors.redAccent : Colors.orangeAccent, fontSize: 10, fontWeight: FontWeight.w900)),
+                ],
+              ),
+            ),
+          ),
+
+          // Security Score Gauge
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+              child: Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: VaultColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(VaultRadius.lg),
+                ),
+                child: Column(children: [
+                  Text('SECURITY SCORE', style: VaultTypography.labelSm.copyWith(letterSpacing: 3)),
+                  const SizedBox(height: 24),
+                  AnimatedBuilder(
+                    animation: _gaugeAnim,
+                    builder: (context, child) {
+                      return SizedBox(
+                        width: 180, height: 180,
+                        child: CustomPaint(
+                          painter: _GaugePainter(
+                            progress: _gaugeAnim.value * (securityScore / 100),
+                            score: securityScore,
+                          ),
+                          child: Center(
+                            child: Column(mainAxisSize: MainAxisSize.min, children: [
+                              Text('${(securityScore * _gaugeAnim.value).toInt()}',
+                                style: GoogleFonts.manrope(fontSize: 52, fontWeight: FontWeight.w800, color: VaultColors.primary)),
+                              Text('PROTECTED', style: VaultTypography.labelSm),
+                            ]),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  Text.rich(TextSpan(children: [
+                    TextSpan(text: 'Your security health is ', style: VaultTypography.bodySm),
+                    TextSpan(text: securityScore >= 80 ? 'Excellent' : securityScore >= 50 ? 'Fair' : 'Poor',
+                      style: VaultTypography.bodySm.copyWith(color: VaultColors.tertiary, fontWeight: FontWeight.w700)),
+                    TextSpan(text: '. ${weakCount > 0 ? '$weakCount actions remaining.' : 'All clear!'}', style: VaultTypography.bodySm),
+                  ])),
+                ]),
+              ),
+            ),
+          ),
+
+          // Metrics Row
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+              child: Row(children: [
+                Expanded(child: _buildMetricCard(Icons.key, '$totalEntries', 'Logins')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildMetricCard(Icons.folder_special, '$totalCategories', 'Folders')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildMetricCard(Icons.perm_media, '$totalMedia', 'Media')),
+              ]),
+            ),
+          ),
+
+          // Strength Bar
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
+              child: _buildStrengthBar(strongCount, mediumCount, weakCount, total),
+            ),
+          ),
+
+          // Critical Recommendations
+          if (vulnerableAccounts.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 12),
+                child: Row(children: [
+                  const Icon(Icons.priority_high, color: VaultColors.primary, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Take Action', style: VaultTypography.headlineSm),
+                ]),
+              ),
+            ),
+            SliverList(
+              delegate: SliverChildBuilderDelegate((context, index) {
+                if (index >= vulnerableAccounts.length || index >= 3) return null;
+                final item = vulnerableAccounts[index];
+                final PasswordEntry entry = item['entry'];
+                final bool isPwned = (item['pwned'] ?? 0) > 0;
+                final isWeak = item['strength'] == 1;
+                
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: VaultDecorations.accentCard(
+                      accent: isPwned ? VaultColors.errorContainer : (isWeak ? VaultColors.error : VaultColors.primary),
+                      bgColor: VaultColors.surfaceContainer,
+                    ),
+                    child: Row(children: [
+                      Icon(isPwned ? Icons.dangerous : Icons.warning_amber_rounded,
+                        color: isPwned ? VaultColors.errorContainer : VaultColors.error, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(entry.title, style: VaultTypography.labelLg, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 2),
+                        Text(isPwned ? 'Found in data breach' : 'Weak or reused',
+                          style: VaultTypography.labelMd, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ])),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isPwned ? VaultColors.errorContainer : VaultColors.secondaryContainer,
+                          borderRadius: BorderRadius.circular(VaultRadius.full),
+                        ),
+                        child: Text(isPwned ? 'Fix' : 'Fix',
+                          style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700,
+                            color: isPwned ? VaultColors.onErrorContainer : VaultColors.onSecondaryContainer)),
+                      ),
+                    ]),
                   ),
                 );
-              },
+              }, childCount: min(vulnerableAccounts.length, 3)),
             ),
+          ],
+
+          // Recent Activity
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 12),
+              child: Row(children: [
+                const Icon(Icons.history, color: VaultColors.primary, size: 20),
+                const SizedBox(width: 8),
+                Text('Recent Activity', style: VaultTypography.headlineSm),
+              ]),
+            ),
+          ),
+
+          // Activity items
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: VaultColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(VaultRadius.lg),
+                ),
+                child: Column(children: [
+                  if (_breachLogs.isNotEmpty) ...[
+                    ..._breachLogs.take(3).map((file) {
+                      final filename = file.path.split(Platform.pathSeparator).last;
+                      final rawTime = filename.replaceAll('intruder_', '').replaceAll('.jpg', '');
+                      return _buildActivityItem(
+                        Icons.warning_amber_rounded, VaultColors.error,
+                        'Unauthorized Access Attempt',
+                        rawTime.replaceAll('T', ' at ').replaceAll('-', ':'),
+                        onTap: () => _showBreachLogDetail(file),
+                      );
+                    }),
+                  ],
+                  _buildActivityItem(Icons.login, VaultColors.primary,
+                    'Vault Unlocked', 'Current session'),
+                  if (vault.categories.isNotEmpty)
+                    _buildActivityItem(Icons.folder_special, VaultColors.tertiary,
+                      '${vault.categories.length} folders secured', 'Encrypted with AES-256'),
+                ]),
+              ),
+            ),
+          ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        ],
+      ),
     );
   }
 
-  Widget _buildStatBadge(String count, String label, Color color) {
-    return Column(
-      children: [
-        Text(count, style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.bold)),
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-      ],
+  Widget _buildMetricCard(IconData icon, String value, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      decoration: VaultDecorations.card(color: VaultColors.surfaceContainer),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        Icon(icon, color: VaultColors.primary, size: 22),
+        const SizedBox(height: 8),
+        Text(value, style: GoogleFonts.manrope(fontSize: 24, fontWeight: FontWeight.w800, color: VaultColors.onSurface)),
+        const SizedBox(height: 2),
+        Text(label, style: VaultTypography.labelSm.copyWith(letterSpacing: 1, fontSize: 10)),
+      ]),
     );
   }
+
+  Widget _buildStrengthBar(int strong, int medium, int weak, int total) {
+    double strongPct = total == 0 ? 0 : strong / total;
+    double medPct = total == 0 ? 0 : medium / total;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: VaultDecorations.card(color: VaultColors.surfaceContainerLow),
+      child: Row(children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: VaultColors.tertiary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(Icons.bolt, color: VaultColors.tertiary, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Flexible(child: Text('Strength', style: VaultTypography.labelLg)),
+              const SizedBox(width: 8),
+              Text(
+                total == 0 ? 'No data' : '${(strongPct * 100).toInt()}% Strong',
+                style: VaultTypography.labelMd.copyWith(color: VaultColors.tertiary, fontWeight: FontWeight.w700),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: SizedBox(
+                height: 6,
+                child: Row(children: [
+                  if (total > 0) ...[
+                    Expanded(flex: (strongPct * 100).toInt().clamp(1, 100),
+                      child: Container(color: VaultColors.tertiary)),
+                    const SizedBox(width: 2),
+                    Expanded(flex: (medPct * 100).toInt().clamp(1, 100),
+                      child: Container(color: VaultColors.primary)),
+                    const SizedBox(width: 2),
+                    Expanded(flex: ((1 - strongPct - medPct) * 100).toInt().clamp(1, 100),
+                      child: Container(color: VaultColors.error)),
+                  ] else
+                    Expanded(child: Container(color: VaultColors.surfaceContainerHighest)),
+                ]),
+              ),
+            ),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildActivityItem(IconData icon, Color color, String title, String subtitle, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: VaultTypography.labelLg),
+            Text(subtitle, style: VaultTypography.labelSm.copyWith(letterSpacing: 0)),
+          ])),
+        ]),
+      ),
+    );
+  }
+
+  void _showBreachLogDetail(File file) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: VaultColors.surfaceContainerHigh,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(VaultRadius.md),
+              child: Image.file(file, height: 200, fit: BoxFit.cover),
+            ),
+            const SizedBox(height: 20),
+            Text('Intruder captured after 3 failed PIN attempts.',
+              style: VaultTypography.bodyMd.copyWith(color: VaultColors.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: VaultColors.error,
+                  foregroundColor: VaultColors.onError,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.full)),
+                ),
+                icon: const Icon(Icons.delete_outline, size: 18),
+                label: Text('Delete Log', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _deleteLog(file);
+                },
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────
+// Security Score Gauge Painter
+// ─────────────────────────────────────────────────
+class _GaugePainter extends CustomPainter {
+  final double progress;
+  final double score;
+
+  _GaugePainter({required this.progress, required this.score});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 8;
+
+    // Background ring
+    final bgPaint = Paint()
+      ..color = VaultColors.surfaceContainerHighest
+      ..strokeWidth = 12
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // Progress arc
+    final progressPaint = Paint()
+      ..strokeWidth = 12
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..shader = SweepGradient(
+        startAngle: -pi / 2,
+        endAngle: 3 * pi / 2,
+        colors: const [VaultColors.primaryContainer, VaultColors.primary, VaultColors.tertiary],
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
+
+    final sweepAngle = 2 * pi * progress;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -pi / 2,
+      sweepAngle,
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _GaugePainter old) => old.progress != progress;
 }

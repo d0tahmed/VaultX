@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; 
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/security_service.dart';
 import '../services/vault_provider.dart'; 
-import 'home_screen.dart'; 
+import '../theme/app_theme.dart';
+import 'main_shell.dart'; 
 
 class PinSetupScreen extends StatefulWidget {
   final bool isChangingPin; 
@@ -62,7 +64,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
     });
   }
 
-@override
+  @override
   void dispose() {
     // 🛡️ SEC PATCH: Wipe initial setup PINs from heap
     firstPin = '';
@@ -89,11 +91,11 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
         SnackBar(
           content: Text(
             widget.isChangingPin ? 'PIN Successfully Updated!' : 'PIN Successfully Secured!', 
-            style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)
+            style: GoogleFonts.inter(color: VaultColors.onPrimary, fontWeight: FontWeight.w700),
           ), 
-          backgroundColor: Colors.cyanAccent.shade700,
+          backgroundColor: VaultColors.primaryContainer,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.md)),
         ),
       );
 
@@ -102,7 +104,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
       
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        MaterialPageRoute(builder: (context) => const MainShell()),
         (route) => false,
       );
     } else {
@@ -128,9 +130,9 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
           height: isFilled ? 18 : 14,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isFilled ? Colors.cyanAccent : const Color(0xFF1A1A1A),
-            border: Border.all(color: isFilled ? Colors.cyanAccent : Colors.white24, width: 2),
-            boxShadow: isFilled ? [BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.5), blurRadius: 10)] : [],
+            color: isFilled ? VaultColors.primaryContainer : Colors.transparent,
+            border: Border.all(color: isFilled ? VaultColors.primaryContainer : VaultColors.outlineVariant, width: 2),
+            boxShadow: isFilled ? [BoxShadow(color: VaultColors.primaryContainer.withValues(alpha: 0.5), blurRadius: 10)] : [],
           ),
         );
       }),
@@ -148,7 +150,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
           itemBuilder: (context, index) {
             if (index == 9) return const SizedBox(); 
             if (index == 11) {
-              return IconButton(icon: const Icon(Icons.backspace_outlined, color: Colors.white70, size: 28), onPressed: _onBackspace);
+              return IconButton(icon: const Icon(Icons.backspace_outlined, color: VaultColors.onSurfaceVariant, size: 28), onPressed: _onBackspace);
             }
             final number = index == 10 ? '0' : '${index + 1}';
             return InkWell(
@@ -157,11 +159,11 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFF1A1A1A),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                  color: VaultColors.surfaceContainerHigh,
+                  border: Border.all(color: VaultColors.onSurface.withValues(alpha: 0.05)),
                 ),
                 alignment: Alignment.center,
-                child: Text(number, style: const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.w500)),
+                child: Text(number, style: GoogleFonts.inter(fontSize: 28, color: VaultColors.onSurface, fontWeight: FontWeight.w500)),
               ),
             );
           },
@@ -173,7 +175,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F), 
+      backgroundColor: VaultColors.background, 
       body: SafeArea(
         child: Column(
           children: [
@@ -182,13 +184,13 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 shape: BoxShape.circle, 
-                color: const Color(0xFF1A1A1A), 
-                boxShadow: [BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.1), blurRadius: 30, spreadRadius: 10)]
+                color: VaultColors.surfaceContainerHigh, 
+                boxShadow: [BoxShadow(color: VaultColors.primaryContainer.withValues(alpha: 0.1), blurRadius: 30, spreadRadius: 10)],
               ),
-              child: const Icon(Icons.shield_outlined, size: 60, color: Colors.cyanAccent),
+              child: const Icon(Icons.shield_outlined, size: 60, color: VaultColors.primaryContainer),
             ),
             const SizedBox(height: 30),
-            Text(message, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 1.2)),
+            Text(message, style: GoogleFonts.manrope(color: VaultColors.onSurface, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 1.2)),
             const SizedBox(height: 40),
             _buildPinIndicator(isConfirming ? confirmPin : firstPin),
             const SizedBox(height: 60),

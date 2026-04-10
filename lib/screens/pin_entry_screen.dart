@@ -5,9 +5,11 @@ import 'package:provider/provider.dart';
 import 'dart:async'; 
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/vault_provider.dart';
 import '../services/security_service.dart';
-import 'home_screen.dart';
+import '../theme/app_theme.dart';
+import 'main_shell.dart';
 import 'lock_screen.dart'; 
 import '../main.dart'; 
 
@@ -36,7 +38,6 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
   void initState() {
     super.initState();
     _checkInitialLockout(); 
-    // 🛡️ SEC PATCH: Removed _initSilentCamera() from here. No covert backgrounding.
   }
 
   // 🛡️ SEC PATCH: JIT Camera Initialization & .nomedia creation
@@ -161,7 +162,7 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
           Navigator.pushReplacement(
             context,
             PageRouteBuilder( 
-              pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
+              pageBuilder: (context, animation, secondaryAnimation) => const MainShell(),
               transitionsBuilder: (context, animation, secondaryAnimation, child) {
                 return FadeTransition(opacity: animation, child: child);
               },
@@ -197,7 +198,7 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
           setState(() {
             message = '☠️ VAULT DESTROYED ☠️\nAll data cryptographically shredded.';
             hasError = true;
-            currentPin = ''; // 🛡️ SEC PATCH: Removed '123456' fake assignment. Zeroed instead.
+            currentPin = ''; // 🛡️ SEC PATCH: Zeroed
           });
 
           Future.delayed(const Duration(seconds: 4), () {
@@ -211,10 +212,12 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
   }
 
   Widget _buildPinIndicator() {
+    final bool isDestroyed = message.contains('DESTROYED');
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(6, (index) {
         bool isFilled = index < currentPin.length;
+        final activeColor = isDestroyed ? VaultColors.error : VaultColors.primaryContainer;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           margin: const EdgeInsets.symmetric(horizontal: 8),
@@ -222,16 +225,12 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
           height: isFilled ? 18 : 14,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isFilled 
-                ? (message.contains('DESTROYED') ? Colors.redAccent : Colors.cyanAccent) 
-                : (hasError ? Colors.redAccent.withValues(alpha: 0.5) : const Color(0xFF1A1A1A)),
+            color: isFilled ? activeColor : Colors.transparent,
             border: Border.all(
-              color: isFilled 
-                  ? (message.contains('DESTROYED') ? Colors.redAccent : Colors.cyanAccent) 
-                  : (hasError ? Colors.redAccent : Colors.white24),
+              color: isFilled ? activeColor : (hasError ? VaultColors.error.withValues(alpha: 0.5) : VaultColors.outlineVariant),
               width: 2,
             ),
-            boxShadow: isFilled ? [BoxShadow(color: (message.contains('DESTROYED') ? Colors.redAccent : Colors.cyanAccent).withValues(alpha: 0.5), blurRadius: 10)] : [],
+            boxShadow: isFilled ? [BoxShadow(color: activeColor.withValues(alpha: 0.5), blurRadius: 10)] : [],
           ),
         );
       }),
@@ -239,6 +238,7 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
   }
 
   Widget _buildNumpad() {
+    final bool isDestroyed = message.contains('DESTROYED');
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -250,7 +250,8 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
             if (index == 9) return const SizedBox(); 
             if (index == 11) {
               return IconButton(
-                icon: Icon(Icons.backspace_outlined, color: message.contains('DESTROYED') ? Colors.redAccent.withValues(alpha: 0.5) : Colors.white70, size: 28),
+                icon: Icon(Icons.backspace_outlined,
+                  color: isDestroyed ? VaultColors.error.withValues(alpha: 0.5) : VaultColors.onSurfaceVariant, size: 28),
                 onPressed: _onBackspace,
               );
             }
@@ -261,11 +262,17 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFF1A1A1A),
-                  border: Border.all(color: message.contains('DESTROYED') ? Colors.redAccent.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05)),
+                  color: VaultColors.surfaceContainerHigh,
+                  border: Border.all(color: isDestroyed
+                    ? VaultColors.error.withValues(alpha: 0.2)
+                    : VaultColors.onSurface.withValues(alpha: 0.05)),
                 ),
                 alignment: Alignment.center,
-                child: Text(number, style: TextStyle(fontSize: 28, color: message.contains('DESTROYED') ? Colors.redAccent : Colors.white, fontWeight: FontWeight.w500)),
+                child: Text(number, style: GoogleFonts.inter(
+                  fontSize: 28,
+                  color: isDestroyed ? VaultColors.error : VaultColors.onSurface,
+                  fontWeight: FontWeight.w500,
+                )),
               ),
             );
           },
@@ -276,13 +283,14 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDestroyed = message.contains('DESTROYED');
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F), 
+      backgroundColor: VaultColors.background, 
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white70, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new, color: VaultColors.onSurfaceVariant, size: 20),
           onPressed: () {
             HapticFeedback.lightImpact();
             Navigator.pop(context);
@@ -294,13 +302,27 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF1A1A1A), boxShadow: [BoxShadow(color: (message.contains('DESTROYED') ? Colors.redAccent : Colors.cyanAccent).withValues(alpha: 0.1), blurRadius: 30, spreadRadius: 10)]),
-              child: Icon(message.contains('DESTROYED') ? Icons.warning_amber_rounded : Icons.dialpad, size: 60, color: message.contains('DESTROYED') ? Colors.redAccent : Colors.cyanAccent),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: VaultColors.surfaceContainerHigh,
+                boxShadow: [BoxShadow(
+                  color: (isDestroyed ? VaultColors.error : VaultColors.primaryContainer).withValues(alpha: 0.1),
+                  blurRadius: 30, spreadRadius: 10,
+                )],
+              ),
+              child: Icon(
+                isDestroyed ? Icons.warning_amber_rounded : Icons.dialpad,
+                size: 60,
+                color: isDestroyed ? VaultColors.error : VaultColors.primaryContainer,
+              ),
             ),
             const SizedBox(height: 30),
             Text(
               message, 
-              style: TextStyle(color: hasError ? Colors.redAccent : Colors.white, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 1.2),
+              style: GoogleFonts.manrope(
+                color: hasError ? VaultColors.error : VaultColors.onSurface,
+                fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 1.2,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),

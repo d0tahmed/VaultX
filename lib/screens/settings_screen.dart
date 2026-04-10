@@ -1,11 +1,12 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../services/security_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/vault_provider.dart';
-import 'pin_entry_screen.dart';
+import '../services/security_service.dart';
+import '../theme/app_theme.dart';
+import 'lock_screen.dart';
 import 'pin_setup_screen.dart';
-import 'lock_screen.dart'; // 🛡️ FIX: Added missing import so the app can route here after wiping
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -14,220 +15,347 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _animCtrl;
-  late Animation<double> _fadeAnim;
-  late Animation<Offset> _slideAnim;
+class _SettingsScreenState extends State<SettingsScreen> {
+  final SecurityService _securityService = SecurityService();
 
-  @override
-  void initState() {
-    super.initState();
-    _animCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 480));
-    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
-    _animCtrl.forward();
+  void _changeVaultPin() {
+    HapticFeedback.mediumImpact();
+    Navigator.push(context, MaterialPageRoute(
+      builder: (context) => const PinSetupScreen(isChangingPin: true),
+    ));
   }
 
-  @override
-  void dispose() {
-    _animCtrl.dispose();
-    super.dispose();
-  }
-
-  Widget _buildTile({required IconData icon, required Color color, required String title, String? subtitle, required VoidCallback onTap, bool isDanger = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-      child: Material(
-        color: const Color(0xFF161618),
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          splashColor: color.withValues(alpha: 0.08),
-          highlightColor: color.withValues(alpha: 0.04),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isDanger ? Colors.redAccent.withValues(alpha: 0.2) : color.withValues(alpha: 0.12), width: 1.5),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                  child: Icon(icon, color: color, size: 20),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: TextStyle(color: isDanger ? Colors.redAccent : Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 2),
-                        Text(subtitle, style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                      ],
-                    ],
-                  ),
-                ),
-                Icon(Icons.chevron_right_rounded, color: isDanger ? Colors.redAccent.withValues(alpha: 0.5) : Colors.white24, size: 20),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _sectionLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 24, top: 20, bottom: 6),
-      child: Text(text.toUpperCase(), style: const TextStyle(color: Colors.white24, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.4)),
-    );
-  }
-
-  Future<void> _changeVaultPin(BuildContext context) async {
-    HapticFeedback.selectionClick();
-    final bool? verified = await Navigator.push(context, _smoothRoute(const PinEntryScreen(isRevealing: true)));
-    if (verified == true && context.mounted) {
-      HapticFeedback.mediumImpact();
-      Navigator.push(context, _smoothRoute(const PinSetupScreen(isChangingPin: true)));
-    }
-  }
-
-  Future<void> _resetMediaPin(BuildContext context) async {
-    HapticFeedback.selectionClick();
-    final bool? verified = await Navigator.push(context, _smoothRoute(const PinEntryScreen(isRevealing: true)));
-    if (verified != true || !context.mounted) return;
-
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF161618),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Reset Media PIN?', style: TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold)),
-        content: const Text('This will delete your current Media PIN. Your photos and videos are safe.', style: TextStyle(color: Colors.white70, height: 1.5)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel', style: TextStyle(color: Colors.white54))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Reset PIN', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !context.mounted) return;
-
-    await SecurityService().clearMediaPin();
-    HapticFeedback.heavyImpact();
-
-    if (context.mounted) {
+  void _resetMediaPin() async {
+    HapticFeedback.mediumImpact();
+    await _securityService.clearMediaPin();
+    Provider.of<VaultProvider>(context, listen: false).lockMediaVault();
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Media PIN reset. Set a new one on next entry.', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.orangeAccent,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          duration: const Duration(seconds: 3),
+          content: Text('Media PIN has been reset. Set a new one next time you access the vault.',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+          backgroundColor: VaultColors.tertiaryContainer,
         ),
       );
     }
   }
 
-  Route<T> _smoothRoute<T>(Widget page) {
-    return PageRouteBuilder<T>(
-      pageBuilder: (_, animation, __) => page,
-      transitionDuration: const Duration(milliseconds: 320),
-      transitionsBuilder: (_, animation, __, child) {
-        return FadeTransition(
-          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-          child: SlideTransition(
-            position: Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-            child: child,
+  void _confirmWipe(BuildContext context) {
+    HapticFeedback.heavyImpact();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: VaultColors.surfaceContainerHigh,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.xl)),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: VaultColors.error, size: 24),
+            const SizedBox(width: 8),
+            Text('Confirm Total Wipe', style: VaultTypography.headlineSm.copyWith(color: VaultColors.error)),
+          ],
+        ),
+        content: Text(
+          'This will permanently destroy:\n\n• All stored passwords\n• All encrypted media\n• All security keys\n• Master PIN & Media PIN\n\nThis action is IRREVERSIBLE. Your data cannot be recovered.',
+          style: VaultTypography.bodyMd.copyWith(color: VaultColors.onSurfaceVariant, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.inter(color: VaultColors.onSurfaceVariant)),
           ),
-        );
-      },
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: VaultColors.error,
+              foregroundColor: VaultColors.onError,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.full)),
+            ),
+            icon: const Icon(Icons.delete_forever, size: 18),
+            label: Text('DESTROY VAULT', style: GoogleFonts.manrope(fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+            onPressed: () async {
+              HapticFeedback.heavyImpact();
+              final vault = Provider.of<VaultProvider>(context, listen: false);
+              await vault.deleteVaultFile();
+              await _securityService.resetAll();
+              vault.wipeMemory();
+              if (context.mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LockScreen()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
-        leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white70, size: 20), onPressed: () { HapticFeedback.lightImpact(); Navigator.pop(context); }),
-      ),
-      body: FadeTransition(
-        opacity: _fadeAnim,
-        child: SlideTransition(
-          position: _slideAnim,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _sectionLabel('Security'),
-              _buildTile(icon: Icons.password_rounded, color: Colors.cyanAccent, title: 'Change Vault PIN', subtitle: 'Update your master 6-digit PIN', onTap: () => _changeVaultPin(context)),
-              _buildTile(icon: Icons.photo_library_outlined, color: Colors.orangeAccent, title: 'Reset Media PIN', subtitle: 'Forgot your media vault PIN? Reset it here', onTap: () => _resetMediaPin(context)),
-              _sectionLabel('Danger zone'),
-              _buildTile(icon: Icons.delete_forever_rounded, color: Colors.redAccent, title: 'Wipe Entire Vault', subtitle: 'Permanently delete all data', isDanger: true, onTap: () => _confirmWipe(context)),
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 40),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Text('made with ', style: TextStyle(color: Colors.white38, fontSize: 13)),
-                    Text('❤️', style: TextStyle(fontSize: 13)),
-                    Text(' by d0tahmed', style: TextStyle(color: Colors.cyanAccent, fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+      backgroundColor: VaultColors.background,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // Header
+          SliverToBoxAdapter(
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('CONFIGURATION & IDENTITY', style: VaultTypography.labelSm.copyWith(letterSpacing: 3, color: VaultColors.onSurfaceVariant)),
+                  const SizedBox(height: 6),
+                  Text('Settings', style: VaultTypography.displayLg),
+                ]),
+              ),
+            ),
+          ),
+
+          // Security Protocol Section
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                _buildSectionHeader('Security Protocol', VaultColors.tertiary),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: VaultDecorations.card(color: VaultColors.surfaceContainerLow),
+                  child: Column(children: [
+                    _buildSettingsTile(
+                      icon: Icons.lock_reset,
+                      title: 'Reset VaultX Password',
+                      subtitle: 'Change your master PIN',
+                      trailing: const Icon(Icons.lock_reset, color: VaultColors.onSurfaceVariant, size: 20),
+                      onTap: _changeVaultPin,
+                    ),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      height: 1,
+                      color: VaultColors.outlineVariant.withValues(alpha: 0.15),
+                    ),
+                    _buildSettingsTile(
+                      icon: Icons.report_outlined,
+                      title: 'Reset Media Password',
+                      subtitle: 'Clear media vault PIN',
+                      trailing: const Icon(Icons.enhanced_encryption, color: VaultColors.onSurfaceVariant, size: 20),
+                      onTap: _resetMediaPin,
+                    ),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
+
+          // App Preferences Section
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                _buildSectionHeader('App Preferences', VaultColors.secondary),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: VaultDecorations.card(color: VaultColors.surfaceContainerLow),
+                  child: Column(children: [
+                    _buildSettingsTile(
+                      icon: Icons.security,
+                      title: 'Biometric Lock',
+                      subtitle: 'Fingerprint or face unlock',
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: VaultColors.tertiary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(VaultRadius.full),
+                        ),
+                        child: Text('ACTIVE', style: GoogleFonts.inter(fontSize: 11, color: VaultColors.tertiary, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
+
+          // About Section
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                _buildSectionHeader('About', VaultColors.primary),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: VaultDecorations.card(color: VaultColors.surfaceContainerLow),
+                  child: Row(children: [
+                    Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color: VaultColors.primaryContainer.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(VaultRadius.md),
+                      ),
+                      child: const Icon(Icons.shield, color: VaultColors.primaryContainer, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('VaultX', style: VaultTypography.titleMd),
+                      const SizedBox(height: 2),
+                      Text('Version 3.0.0 — AES-256 Encrypted', style: VaultTypography.labelMd),
+                    ])),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
+
+          // Danger Zone
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                _buildSectionHeader('Danger Zone', VaultColors.error),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: VaultColors.errorContainer.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(VaultRadius.lg),
+                    border: Border.all(color: VaultColors.error.withValues(alpha: 0.1)),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Icon(Icons.dangerous, color: VaultColors.error, size: 40),
+                    const SizedBox(height: 16),
+                    Text('Wipe the Vault', style: VaultTypography.headlineSm.copyWith(color: VaultColors.error)),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Permanently erase all passwords, encrypted media, security keys, and authentication data. This action is irreversible. Use only as a last resort.',
+                      style: VaultTypography.bodySm.copyWith(color: VaultColors.onSurfaceVariant, height: 1.5),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: VaultColors.error,
+                          foregroundColor: VaultColors.onError,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.full)),
+                        ),
+                        icon: const Icon(Icons.delete_forever, size: 18),
+                        label: Text('Execute Permanent Wipe', style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14)),
+                        onPressed: () => _confirmWipe(context),
+                      ),
+                    ),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
+
+          // Made with ❤️ footer
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
+              child: Center(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 1,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            VaultColors.outlineVariant.withValues(alpha: 0.0),
+                            VaultColors.outlineVariant.withValues(alpha: 0.3),
+                            VaultColors.outlineVariant.withValues(alpha: 0.0),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Made with ',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              color: VaultColors.onSurfaceVariant.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          const TextSpan(
+                            text: '❤️',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          TextSpan(
+                            text: ' by ',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              color: VaultColors.onSurfaceVariant.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          TextSpan(
+                            text: 'd0tahmed',
+                            style: GoogleFonts.manrope(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: VaultColors.primaryContainer.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
+        ],
       ),
     );
   }
 
-  Future<void> _confirmWipe(BuildContext context) async {
-    HapticFeedback.heavyImpact();
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF161618),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Wipe Everything?', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-        content: const Text('This will permanently delete ALL passwords, media, and settings. There is no recovery.', style: TextStyle(color: Colors.white70, height: 1.5)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel', style: TextStyle(color: Colors.white54))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Wipe All', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
+  Widget _buildSectionHeader(String title, Color accent) {
+    return Row(children: [
+      Container(width: 4, height: 20, decoration: BoxDecoration(
+        color: accent, borderRadius: BorderRadius.circular(2),
+      )),
+      const SizedBox(width: 10),
+      Text(title, style: VaultTypography.titleMd.copyWith(color: accent)),
+    ]);
+  }
 
-    if (confirmed == true && context.mounted) {
-      await SecurityService().resetAll();
-      final vault = Provider.of<VaultProvider>(context, listen: false);
-      await vault.deleteVaultFile();
-      vault.wipeMemory();
-      HapticFeedback.heavyImpact();
-      
-      // 🛡️ SEC PATCH: Rebuild LockScreen from scratch to kill old state variables
-      Navigator.pushAndRemoveUntil(
-        context, 
-        MaterialPageRoute(builder: (context) => const LockScreen()), 
-        (route) => false
-      );
-    }
+  Widget _buildSettingsTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Widget trailing,
+    VoidCallback? onTap,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: VaultColors.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(VaultRadius.md),
+        ),
+        child: Icon(icon, color: VaultColors.onSurfaceVariant, size: 20),
+      ),
+      title: Text(title, style: VaultTypography.titleMd),
+      subtitle: Text(subtitle, style: VaultTypography.labelMd),
+      trailing: trailing,
+      onTap: () {
+        if (onTap != null) {
+          HapticFeedback.lightImpact();
+          onTap();
+        }
+      },
+    );
   }
 }

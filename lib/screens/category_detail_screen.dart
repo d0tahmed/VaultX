@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; 
 import 'package:provider/provider.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/vault_provider.dart';
 import '../services/clipboard_service.dart'; 
+import '../theme/app_theme.dart';
 import 'pin_entry_screen.dart';
 import '../models/password_entry.dart';
 import '../main.dart'; 
@@ -59,7 +61,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     HapticFeedback.mediumImpact();
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: VaultColors.surfaceContainerHigh,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (BuildContext modalContext) {
@@ -68,12 +70,10 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Wrap(
               children: [
-                Center(
-                  child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10))),
-                ),
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: VaultColors.outlineVariant, borderRadius: BorderRadius.circular(10)))),
                 Padding(
                   padding: const EdgeInsets.all(24.0),
-                  child: Text('Manage ${entry.title}', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                  child: Text('Manage ${entry.title}', style: VaultTypography.headlineSm),
                 ),
                 _buildMenuTile(Icons.password, 'Change Password', () {
                   Navigator.pop(modalContext);
@@ -90,7 +90,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                 _buildMenuTile(Icons.delete_outline, 'Delete Entry', () {
                   Navigator.pop(modalContext);
                   _showDeleteConfirmation(context, entry);
-                }, color: Colors.redAccent),
+                }, color: VaultColors.error),
                 const SizedBox(height: 20),
               ],
             ),
@@ -100,14 +100,17 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     );
   }
 
-  ListTile _buildMenuTile(IconData icon, String title, VoidCallback onTap, {Color color = Colors.purpleAccent}) {
+  ListTile _buildMenuTile(IconData icon, String title, VoidCallback onTap, {Color color = VaultColors.primary}) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(VaultRadius.md)),
         child: Icon(icon, color: color),
       ),
-      title: Text(title, style: TextStyle(color: color == Colors.redAccent ? Colors.redAccent : Colors.white, fontWeight: FontWeight.w500)),
+      title: Text(title, style: GoogleFonts.inter(
+        color: color == VaultColors.error ? VaultColors.error : VaultColors.onSurface,
+        fontWeight: FontWeight.w500,
+      )),
       onTap: () {
         HapticFeedback.lightImpact();
         onTap();
@@ -124,25 +127,28 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(dialogTitle, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: VaultColors.surfaceContainerHigh,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.xl)),
+        title: Text(dialogTitle, style: VaultTypography.headlineSm),
         content: TextField(
           controller: controller,
           autofocus: true,
           obscureText: fieldToEdit == 'password',
-          cursorColor: Colors.purpleAccent,
-          style: const TextStyle(color: Colors.white),
+          cursorColor: VaultColors.primaryContainer,
+          style: GoogleFonts.inter(color: VaultColors.onSurface),
           decoration: InputDecoration(
             filled: true,
-            fillColor: const Color(0xFF2C2C2C),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            fillColor: VaultColors.surfaceContainerHighest,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(VaultRadius.md), borderSide: BorderSide.none),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.white54))),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: GoogleFonts.inter(color: VaultColors.onSurfaceVariant))),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: VaultColors.primaryContainer, foregroundColor: VaultColors.onPrimary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.full)),
+            ),
             onPressed: () {
               if (controller.text.isNotEmpty) {
                 final vault = Provider.of<VaultProvider>(context, listen: false);
@@ -152,7 +158,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                 Navigator.pop(context);
               }
             },
-            child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text('Save', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -168,19 +174,20 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Delete Entry?', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-        content: Text('Are you sure you want to delete ${entry.title}?', style: const TextStyle(color: Colors.white70)),
+        backgroundColor: VaultColors.surfaceContainerHigh,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.xl)),
+        title: Text('Delete Entry?', style: VaultTypography.headlineSm.copyWith(color: VaultColors.error)),
+        content: Text('Are you sure you want to delete ${entry.title}?', style: VaultTypography.bodyMd.copyWith(color: VaultColors.onSurfaceVariant)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.white54))),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: GoogleFonts.inter(color: VaultColors.onSurfaceVariant))),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            style: ElevatedButton.styleFrom(backgroundColor: VaultColors.error, foregroundColor: VaultColors.onError,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.full))),
             onPressed: () {
               Provider.of<VaultProvider>(context, listen: false).deleteEntry(widget.categoryId, entry.id);
               Navigator.pop(context);
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: Text('Delete', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -192,16 +199,16 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: VaultColors.surfaceContainerHigh,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (BuildContext modalContext) {
         return SafeArea(
           child: Wrap(
             children: [
-              Center(child: Container(margin: const EdgeInsets.only(top: 12), width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)))),
-              const Padding(
-                padding: EdgeInsets.all(24.0),
-                child: Text('Verify Identity', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              Center(child: Container(margin: const EdgeInsets.only(top: 12), width: 40, height: 4, decoration: BoxDecoration(color: VaultColors.outlineVariant, borderRadius: BorderRadius.circular(10)))),
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text('Verify Identity', style: VaultTypography.headlineSm),
               ),
               _buildMenuTile(Icons.fingerprint, 'Use Fingerprint', () { Navigator.pop(modalContext); _verifyBiometric(context, entry); }),
               _buildMenuTile(Icons.dialpad, 'Use Vault PIN', () { Navigator.pop(modalContext); _verifyPin(context, entry); }),
@@ -243,36 +250,45 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: VaultColors.surfaceContainerHigh,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.xl)),
         title: Row(
           children: [
-            const Icon(Icons.lock_open, color: Colors.purpleAccent),
+            const Icon(Icons.lock_open, color: VaultColors.primaryContainer),
             const SizedBox(width: 10),
-            Text(entry.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            Text(entry.title, style: VaultTypography.headlineSm),
           ],
         ),
         content: Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: const Color(0xFF0F0F0F), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white10)),
-          child: SelectableText(entry.password, style: const TextStyle(color: Colors.purpleAccent, fontSize: 24, letterSpacing: 2.0, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+          decoration: BoxDecoration(
+            color: VaultColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(VaultRadius.md),
+            border: Border.all(color: VaultColors.outlineVariant.withValues(alpha: 0.2)),
+          ),
+          child: SelectableText(entry.password, style: GoogleFonts.jetBrainsMono(
+            color: VaultColors.primaryContainer, fontSize: 22, letterSpacing: 2.0, fontWeight: FontWeight.w600,
+          ), textAlign: TextAlign.center),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close', style: TextStyle(color: Colors.white54))),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Close', style: GoogleFonts.inter(color: VaultColors.onSurfaceVariant))),
           ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: VaultColors.primaryContainer, foregroundColor: VaultColors.onPrimary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.full)),
+            ),
             icon: const Icon(Icons.copy, size: 18),
-            label: const Text('Copy Password', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: Text('Copy Password', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
             onPressed: () {
               HapticFeedback.mediumImpact();
               ClipboardService.secureCopy(entry.password);
               
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: const Text('Copied! Auto-wiping in 15s...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                backgroundColor: Colors.purpleAccent,
+                content: Text('Copied! Auto-wiping in 15s...', style: GoogleFonts.inter(color: VaultColors.onPrimary, fontWeight: FontWeight.w600)),
+                backgroundColor: VaultColors.primaryContainer,
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.md)),
               ));
             },
           ),
@@ -297,15 +313,20 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     final category = vault.categories.firstWhere((cat) => cat.id == widget.categoryId);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
+      backgroundColor: VaultColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(widget.categoryName, style: const TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(widget.categoryName, style: VaultTypography.titleLg),
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: VaultColors.onSurfaceVariant, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
           IconButton(
-            icon: Icon(isEditMode ? Icons.done_all : Icons.edit_note, color: isEditMode ? Colors.purpleAccent : Colors.white70),
+            icon: Icon(isEditMode ? Icons.done_all : Icons.edit_note,
+              color: isEditMode ? VaultColors.primaryContainer : VaultColors.onSurfaceVariant),
             onPressed: () {
               HapticFeedback.lightImpact();
               setState(() {
@@ -316,7 +337,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
           ),
           if (isEditMode && selectedEntryIds.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              icon: const Icon(Icons.delete_outline, color: VaultColors.error),
               onPressed: () {
                 HapticFeedback.heavyImpact();
                 for (var entryId in selectedEntryIds) vault.deleteEntry(widget.categoryId, entryId);
@@ -330,9 +351,9 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.key_off, size: 80, color: Colors.white.withOpacity(0.1)),
+                  Icon(Icons.key_off, size: 80, color: VaultColors.onSurfaceVariant.withValues(alpha: 0.15)),
                   const SizedBox(height: 16),
-                  Text('No passwords saved here.', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16)),
+                  Text('No passwords saved here.', style: VaultTypography.bodyMd.copyWith(color: VaultColors.onSurfaceVariant)),
                 ],
               ),
             )
@@ -348,18 +369,17 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                   duration: const Duration(milliseconds: 200),
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: isSelected ? Colors.purpleAccent.withOpacity(0.1) : const Color(0xFF1A1A1A),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isSelected ? Colors.purpleAccent : Colors.white.withOpacity(0.05), width: 1.5),
+                    color: isSelected ? VaultColors.primary.withValues(alpha: 0.08) : VaultColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(VaultRadius.lg),
                   ),
                   child: ListTile(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.lg)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     leading: isEditMode
                         ? Checkbox(
                             value: isSelected,
-                            activeColor: Colors.purpleAccent,
-                            checkColor: Colors.white,
+                            activeColor: VaultColors.primaryContainer,
+                            checkColor: VaultColors.onPrimary,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                             onChanged: (val) {
                               HapticFeedback.selectionClick();
@@ -368,12 +388,15 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                           )
                         : Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(color: const Color(0xFF2C2C2C), borderRadius: BorderRadius.circular(12)),
-                            child: const Icon(Icons.vpn_key_rounded, color: Colors.purpleAccent),
+                            decoration: BoxDecoration(
+                              color: VaultColors.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(VaultRadius.md),
+                            ),
+                            child: const Icon(Icons.vpn_key_rounded, color: VaultColors.primary, size: 20),
                           ),
-                    title: Text(entry.title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
-                    subtitle: Text(entry.email, style: const TextStyle(color: Colors.white54)), 
-                    trailing: Icon(isEditMode ? null : Icons.visibility_outlined, color: Colors.white38, size: 20),
+                    title: Text(entry.title, style: VaultTypography.titleMd),
+                    subtitle: Text(entry.email, style: VaultTypography.labelMd), 
+                    trailing: Icon(isEditMode ? null : Icons.visibility_outlined, color: VaultColors.onSurfaceVariant, size: 20),
                     onLongPress: () {
                       if (!isEditMode) _showEditMenu(context, entry);
                     },
@@ -392,10 +415,10 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
       floatingActionButton: isEditMode
           ? null
           : FloatingActionButton(
-              backgroundColor: Colors.purpleAccent,
-              foregroundColor: Colors.white,
-              elevation: 8,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              backgroundColor: VaultColors.primaryContainer,
+              foregroundColor: VaultColors.onPrimary,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.full)),
               onPressed: () => _showAddEntryDialog(context),
               child: const Icon(Icons.add, size: 28),
             ),
@@ -456,15 +479,15 @@ class _AddEntrySheetState extends State<_AddEntrySheet> {
       controller: controller,
       obscureText: obscure,
       onChanged: onChanged,
-      style: const TextStyle(color: Colors.white),
-      cursorColor: Colors.purpleAccent,
+      style: GoogleFonts.inter(color: VaultColors.onSurface),
+      cursorColor: VaultColors.primaryContainer,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white38),
-        prefixIcon: Icon(icon, color: Colors.white54),
+        hintStyle: GoogleFonts.inter(color: VaultColors.onSurfaceVariant),
+        prefixIcon: Icon(icon, color: VaultColors.onSurfaceVariant),
         filled: true,
-        fillColor: const Color(0xFF2C2C2C),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+        fillColor: VaultColors.surfaceContainerHighest,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(VaultRadius.lg), borderSide: BorderSide.none),
       ),
     );
   }
@@ -472,29 +495,29 @@ class _AddEntrySheetState extends State<_AddEntrySheet> {
   Widget _buildStrengthMeter() {
     if (_strength == 0) return const SizedBox.shrink(); 
 
-    Color color1 = const Color(0xFF2C2C2C);
-    Color color2 = const Color(0xFF2C2C2C);
-    Color color3 = const Color(0xFF2C2C2C);
+    Color color1 = VaultColors.surfaceContainerHighest;
+    Color color2 = VaultColors.surfaceContainerHighest;
+    Color color3 = VaultColors.surfaceContainerHighest;
     String text = "";
-    Color textColor = Colors.white54;
+    Color textColor = VaultColors.onSurfaceVariant;
 
     if (_strength == 1) { 
-      color1 = Colors.redAccent; 
+      color1 = VaultColors.error; 
       text = "Weak Password"; 
-      textColor = Colors.redAccent; 
+      textColor = VaultColors.error; 
     }
     if (_strength == 2) { 
-      color1 = Colors.orangeAccent; 
-      color2 = Colors.orangeAccent; 
+      color1 = VaultColors.primary; 
+      color2 = VaultColors.primary; 
       text = "Medium Password"; 
-      textColor = Colors.orangeAccent; 
+      textColor = VaultColors.primary; 
     }
     if (_strength == 3) { 
-      color1 = Colors.greenAccent; 
-      color2 = Colors.greenAccent; 
-      color3 = Colors.greenAccent; 
+      color1 = VaultColors.tertiary; 
+      color2 = VaultColors.tertiary; 
+      color3 = VaultColors.tertiary; 
       text = "Strong Password"; 
-      textColor = Colors.greenAccent; 
+      textColor = VaultColors.tertiary; 
     }
 
     return Padding(
@@ -511,7 +534,7 @@ class _AddEntrySheetState extends State<_AddEntrySheet> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(text, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 13)),
+          Text(text, style: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.bold, fontSize: 13)),
         ],
       ),
     );
@@ -522,14 +545,14 @@ class _AddEntrySheetState extends State<_AddEntrySheet> {
     return Container(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 24),
       decoration: const BoxDecoration(
-        color: Color(0xFF1A1A1A),
+        color: VaultColors.surfaceContainerHigh,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24))
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('New Password', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+          Text('New Password', style: VaultTypography.headlineSm),
           const SizedBox(height: 20),
           _buildTextField(titleController, 'Service (e.g. Netflix)', Icons.title),
           const SizedBox(height: 12),
@@ -550,7 +573,12 @@ class _AddEntrySheetState extends State<_AddEntrySheet> {
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: VaultColors.primaryContainer,
+                foregroundColor: VaultColors.onPrimary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.full)),
+                elevation: 0,
+              ),
               onPressed: () {
                 if (titleController.text.isNotEmpty && passController.text.isNotEmpty) {
                   HapticFeedback.mediumImpact();
@@ -558,7 +586,7 @@ class _AddEntrySheetState extends State<_AddEntrySheet> {
                   Navigator.pop(context);
                 }
               },
-              child: const Text('Save Entry', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              child: Text('Save Entry', style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700)),
             ),
           ),
           const SizedBox(height: 30),

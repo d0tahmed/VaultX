@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/clipboard_service.dart';
+import '../theme/app_theme.dart';
 
 class GeneratorSheet extends StatefulWidget {
   const GeneratorSheet({super.key});
@@ -81,19 +83,19 @@ class _GeneratorSheetState extends State<GeneratorSheet> {
           margin: const EdgeInsets.symmetric(horizontal: 4),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? Colors.cyanAccent.shade700 : const Color(0xFF222225),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isSelected ? Colors.cyanAccent : Colors.transparent),
+            color: isSelected ? VaultColors.primaryContainer : VaultColors.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(VaultRadius.md),
           ),
           child: Center(
-            child: Text('$length', style: TextStyle(color: isSelected ? Colors.black : Colors.white54, fontWeight: FontWeight.bold, fontSize: 16)),
+            child: Text('$length', style: GoogleFonts.inter(
+              color: isSelected ? VaultColors.onPrimary : VaultColors.onSurfaceVariant,
+              fontWeight: FontWeight.bold, fontSize: 16,
+            )),
           ),
         ),
       ),
     );
   }
-
-// (Add this inside the _GeneratorSheetState class in lib/screens/generator_sheet.dart)
 
   @override
   void dispose() {
@@ -106,28 +108,32 @@ class _GeneratorSheetState extends State<GeneratorSheet> {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(color: Color(0xFF161618), borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      decoration: const BoxDecoration(
+        color: VaultColors.surfaceContainerHigh,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Secure Generator', style: TextStyle(color: Colors.cyanAccent, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          Text('Secure Generator', style: GoogleFonts.manrope(
+            color: VaultColors.primaryContainer, fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: 1.2,
+          )),
           const SizedBox(height: 24),
           
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFF0F0F0F),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _isFinished ? Colors.cyanAccent : Colors.white10),
-              boxShadow: _isFinished ? [BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.2), blurRadius: 20)] : [],
+              color: VaultColors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(VaultRadius.lg),
+              border: Border.all(color: _isFinished ? VaultColors.primaryContainer : VaultColors.outlineVariant.withValues(alpha: 0.2)),
+              boxShadow: _isFinished ? [BoxShadow(color: VaultColors.primaryContainer.withValues(alpha: 0.15), blurRadius: 20)] : [],
             ),
             child: Text(
               _currentDisplay,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _isFinished ? Colors.cyanAccent : Colors.white70,
-                fontFamily: 'monospace', 
+              style: GoogleFonts.jetBrainsMono(
+                color: _isFinished ? VaultColors.primaryContainer : VaultColors.onSurfaceVariant,
                 fontSize: _selectedLength == 32 ? 14 : 20, 
                 letterSpacing: 2.0,
                 fontWeight: FontWeight.w600,
@@ -144,17 +150,21 @@ class _GeneratorSheetState extends State<GeneratorSheet> {
             height: 55,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: _isFinished ? const Color(0xFF222225) : Colors.cyanAccent.shade700,
-                foregroundColor: _isFinished ? Colors.cyanAccent : Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                backgroundColor: _isFinished ? VaultColors.surfaceContainerHighest : VaultColors.primaryContainer,
+                foregroundColor: _isFinished ? VaultColors.primaryContainer : VaultColors.onPrimary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.full)),
+                elevation: 0,
               ),
               onPressed: _isGenerating ? null : (_isFinished ? () {
                 ClipboardService.secureCopy(_currentDisplay);
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password Copied! Auto-wiping in 30s...'), backgroundColor: Colors.cyanAccent));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('Password Copied! Auto-wiping in 30s...', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: VaultColors.onPrimary)),
+                  backgroundColor: VaultColors.primaryContainer));
               } : _generatePassword),
               icon: Icon(_isFinished ? Icons.copy : Icons.memory),
-              label: Text(_isFinished ? 'COPY TO CLIPBOARD' : 'GENERATE', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.5)),
+              label: Text(_isFinished ? 'COPY TO CLIPBOARD' : 'GENERATE',
+                style: GoogleFonts.manrope(fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: 1.5)),
             ),
           ),
           SizedBox(height: MediaQuery.of(context).padding.bottom), 

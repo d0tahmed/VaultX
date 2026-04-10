@@ -1,51 +1,112 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
+# ─────────────────────────────────────────────
+# OS-generated files
+# ─────────────────────────────────────────────
 .DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# IntelliJ related
+# ─────────────────────────────────────────────
+# IDE & Editor
+# ─────────────────────────────────────────────
+.idea/
+.vscode/
 *.iml
 *.ipr
 *.iws
-.idea/
+*.swp
+*.swo
+*~
+.atom/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
-
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-/build/
+# ─────────────────────────────────────────────
+# Flutter / Dart
+# ─────────────────────────────────────────────
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+/coverage/
+
+# Generated files
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# ─────────────────────────────────────────────
+# Android
+# ─────────────────────────────────────────────
+**/android/**/gradle-wrapper.jar
+**/android/.gradle
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
 *.jks
 *.keystore
+key.properties
+
+# ─────────────────────────────────────────────
+# iOS (if added later)
+# ─────────────────────────────────────────────
+**/ios/**/*.mode1v3
+**/ios/**/*.mode2v3
+**/ios/**/*.moved-aside
+**/ios/**/*.pbxuser
+**/ios/**/*.perspectivev3
+**/ios/**/DerivedData/
+**/ios/**/Icon?
+**/ios/**/Pods/
+**/ios/**/.symlinks/
+**/ios/**/profile
+**/ios/**/xcuserdata
+**/ios/.generated/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+# ─────────────────────────────────────────────
+# Symbolication & Obfuscation
+# ─────────────────────────────────────────────
+app.*.symbols
+app.*.map.json
+
+# ─────────────────────────────────────────────
+# Miscellaneous
+# ─────────────────────────────────────────────
+*.class
+*.log
+*.pyc
+.history
+.svn/
+.swiftpm/
+.build/
+.buildlog/
+migrate_working_dir/
+
+# ─────────────────────────────────────────────
+# Project-specific (archives, temp files)
+# ─────────────────────────────────────────────
+*.zip
+_stitch_secure_ui/

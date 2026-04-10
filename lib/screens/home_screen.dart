@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; 
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/vault_provider.dart';
+import '../theme/app_theme.dart';
 import 'category_detail_screen.dart';
-import 'settings_screen.dart'; 
 import 'generator_sheet.dart';
-import 'dashboard_screen.dart';
-import 'media_vault_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreen> createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class HomeScreenState extends State<HomeScreen> {
   bool isEditMode = false;
   List<String> selectedCategoryIds = [];
 
@@ -30,24 +29,25 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: const BoxDecoration(
-            color: Color(0xFF161618),
+            color: VaultColors.surfaceContainerHigh,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('New Folder', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              Text('New Folder', style: VaultTypography.headlineSm),
               const SizedBox(height: 20),
               TextField(
                 controller: categoryController,
                 autofocus: true,
-                style: const TextStyle(color: Colors.white),
+                style: GoogleFonts.inter(color: VaultColors.onSurface),
+                cursorColor: VaultColors.primaryContainer,
                 decoration: InputDecoration(
                   hintText: 'e.g. Socials, Work',
-                  hintStyle: const TextStyle(color: Colors.grey),
+                  hintStyle: GoogleFonts.inter(color: VaultColors.onSurfaceVariant),
                   filled: true,
-                  fillColor: const Color(0xFF222225),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  fillColor: VaultColors.surfaceContainerHighest,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(VaultRadius.md), borderSide: BorderSide.none),
                 ),
               ),
               const SizedBox(height: 20),
@@ -55,10 +55,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purpleAccent,
-                    foregroundColor: Colors.white,
+                    backgroundColor: VaultColors.primaryContainer,
+                    foregroundColor: VaultColors.onPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.full)),
                   ),
                   onPressed: () async { 
                     if (categoryController.text.trim().isNotEmpty) {
@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       if (mounted) Navigator.pop(context);
                     }
                   },
-                  child: const Text('Create Folder', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: Text('Create Folder', style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 15)),
                 ),
               ),
             ],
@@ -77,10 +77,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showActionMenu(BuildContext context) {
+  void showActionMenu() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF161618),
+      backgroundColor: VaultColors.surfaceContainerHigh,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (BuildContext modalContext) {
         return SafeArea(
@@ -88,48 +88,20 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Wrap(
               children: [
-                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)))),
-                const Padding(
-                  padding: EdgeInsets.all(24.0),
-                  child: Text('Add to Vault', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 8), decoration: BoxDecoration(color: VaultColors.outlineVariant, borderRadius: BorderRadius.circular(10)))),
+                Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Text('Add to Vault', style: VaultTypography.headlineSm),
                 ),
-                
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8), 
-                    decoration: BoxDecoration(color: const Color(0xFF00E5FF).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), 
-                    child: const Icon(Icons.vpn_key, color: Color(0xFF00E5FF))
-                  ),
-                  title: const Text('Generate Password', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
-                  subtitle: const Text('Create a secure, random key', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.pop(modalContext); 
-                    showModalBottomSheet(
-                      context: context,
-                      backgroundColor: Colors.transparent,
-                      isScrollControlled: true,
-                      builder: (context) => const GeneratorSheet(),
-                    );
-                  },
-                ),
-                
-                const SizedBox(height: 8),
-
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8), 
-                    decoration: BoxDecoration(color: Colors.purpleAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), 
-                    child: const Icon(Icons.create_new_folder, color: Colors.purpleAccent)
-                  ),
-                  title: const Text('New Folder', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
-                  subtitle: const Text('Organize your credentials', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.pop(modalContext); 
-                    _showAddCategorySheet(context); 
-                  },
-                ),
+                _buildSheetTile(Icons.vpn_key, VaultColors.primaryContainer, 'Generate Password', 'Create a secure, random key', () {
+                  Navigator.pop(modalContext); 
+                  showModalBottomSheet(context: context, backgroundColor: Colors.transparent, isScrollControlled: true,
+                    builder: (context) => const GeneratorSheet());
+                }),
+                _buildSheetTile(Icons.create_new_folder, VaultColors.tertiary, 'New Folder', 'Organize your credentials', () {
+                  Navigator.pop(modalContext); 
+                  _showAddCategorySheet(context); 
+                }),
                 const SizedBox(height: 20),
               ],
             ),
@@ -139,11 +111,24 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildSheetTile(IconData icon, Color color, String title, String subtitle, VoidCallback onTap) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(VaultRadius.md)),
+        child: Icon(icon, color: color, size: 20),
+      ),
+      title: Text(title, style: VaultTypography.labelLg),
+      subtitle: Text(subtitle, style: VaultTypography.labelMd),
+      onTap: () { HapticFeedback.lightImpact(); onTap(); },
+    );
+  }
+
   void _showFolderMenu(BuildContext context, dynamic category) {
     HapticFeedback.mediumImpact();
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF161618),
+      backgroundColor: VaultColors.surfaceContainerHigh,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (BuildContext modalContext) {
         return SafeArea(
@@ -151,29 +136,19 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Wrap(
               children: [
-                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)))),
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: VaultColors.outlineVariant, borderRadius: BorderRadius.circular(10)))),
                 Padding(
                   padding: const EdgeInsets.all(24.0),
-                  child: Text('Manage ${category.name}', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                  child: Text('Manage ${category.name}', style: VaultTypography.headlineSm),
                 ),
-                ListTile(
-                  leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.purpleAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.edit_outlined, color: Colors.purpleAccent)),
-                  title: const Text('Rename Folder', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.pop(modalContext);
-                    _showRenameCategoryDialog(context, category.id, category.name);
-                  },
-                ),
-                ListTile(
-                  leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.delete_outline, color: Colors.redAccent)),
-                  title: const Text('Delete Folder', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w500)),
-                  onTap: () {
-                    HapticFeedback.heavyImpact();
-                    Navigator.pop(modalContext);
-                    _showDeleteConfirmation(context, category);
-                  },
-                ),
+                _buildSheetTile(Icons.edit_outlined, VaultColors.primary, 'Rename Folder', 'Change folder name', () {
+                  Navigator.pop(modalContext);
+                  _showRenameCategoryDialog(context, category.id, category.name);
+                }),
+                _buildSheetTile(Icons.delete_outline, VaultColors.error, 'Delete Folder', 'Remove permanently', () {
+                  Navigator.pop(modalContext);
+                  _showDeleteConfirmation(context, category);
+                }),
                 const SizedBox(height: 20),
               ],
             ),
@@ -188,26 +163,34 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF161618),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Rename Folder', style: TextStyle(color: Colors.white)),
+        backgroundColor: VaultColors.surfaceContainerHigh,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.xl)),
+        title: Text('Rename Folder', style: VaultTypography.headlineSm),
         content: TextField(
           controller: nameController,
           autofocus: true,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(hintText: 'Folder Name'),
+          style: GoogleFonts.inter(color: VaultColors.onSurface),
+          cursorColor: VaultColors.primaryContainer,
+          decoration: InputDecoration(
+            hintText: 'Folder Name',
+            hintStyle: GoogleFonts.inter(color: VaultColors.onSurfaceVariant),
+            filled: true,
+            fillColor: VaultColors.surfaceContainerHighest,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(VaultRadius.md), borderSide: BorderSide.none),
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: GoogleFonts.inter(color: VaultColors.onSurfaceVariant))),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: VaultColors.primaryContainer, foregroundColor: VaultColors.onPrimary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.full))),
             onPressed: () async { 
               if (nameController.text.trim().isNotEmpty) {
                 await Provider.of<VaultProvider>(context, listen: false).renameCategory(categoryId, nameController.text.trim());
                 if (mounted) Navigator.pop(context);
               }
             },
-            child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text('Save', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -218,121 +201,23 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF161618),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Delete Folder?', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-        content: Text('Are you sure you want to delete "${category.name}" and all its passwords? This cannot be undone.', style: const TextStyle(color: Colors.white70)),
+        backgroundColor: VaultColors.surfaceContainerHigh,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.xl)),
+        title: Text('Delete Folder?', style: VaultTypography.headlineSm.copyWith(color: VaultColors.error)),
+        content: Text('Are you sure you want to delete "${category.name}" and all its passwords? This cannot be undone.',
+          style: VaultTypography.bodyMd.copyWith(color: VaultColors.onSurfaceVariant)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: GoogleFonts.inter(color: VaultColors.onSurfaceVariant))),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            style: ElevatedButton.styleFrom(backgroundColor: VaultColors.error, foregroundColor: VaultColors.onError,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.full))),
             onPressed: () async { 
               await Provider.of<VaultProvider>(context, listen: false).deleteCategory(category.id);
               if (mounted) Navigator.pop(context);
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: Text('Delete', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
           ),
         ],
-      ),
-    );
-  }
-
-  Drawer _buildDrawer(BuildContext context) {
-    return Drawer(
-      backgroundColor: const Color(0xFF161618),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.horizontal(right: Radius.circular(24)),
-      ),
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.cyanAccent.withValues(alpha: 0.1), shape: BoxShape.circle),
-                    child: const Icon(Icons.shield_outlined, color: Colors.cyanAccent, size: 32),
-                  ),
-                  const SizedBox(width: 16),
-                  const Text('VaultX', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                ],
-              ),
-            ),
-            const Divider(color: Colors.white10, thickness: 1),
-            const SizedBox(height: 16),
-            
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.cyanAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.pie_chart_outline, color: Colors.cyanAccent),
-              ),
-              title: const Text('Security Dashboard', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-              onTap: () {
-                HapticFeedback.lightImpact();
-                Navigator.pop(context); 
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const DashboardScreen()));
-              },
-            ),
-            
-            const SizedBox(height: 8),
-
-            Opacity(
-              opacity: 0.4,
-              child: ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: const Color(0xFF00E5FF).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                  child: const Icon(Icons.folder_special, color: Color(0xFF00E5FF)),
-                ),
-                title: const Text('Password Vault', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-                onTap: null, 
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.purpleAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.perm_media, color: Colors.purpleAccent),
-              ),
-              title: const Text('Secure Media', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-              onTap: () {
-                HapticFeedback.lightImpact();
-                Navigator.pop(context); 
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const MediaVaultScreen()));
-              },
-            ),
-
-            const SizedBox(height: 8),
-
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.settings_outlined, color: Colors.white70),
-              ),
-              title: const Text('Settings', style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500)),
-              onTap: () {
-                HapticFeedback.lightImpact();
-                Navigator.pop(context); 
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
-              },
-            ),
-            
-            const Spacer(),
-            
-            const Padding(
-              padding: EdgeInsets.all(24.0),
-              child: Text('v2.0.0-Secure', style: TextStyle(color: Colors.white24, fontSize: 12, letterSpacing: 1.2)),
-            )
-          ],
-        ),
       ),
     );
   }
@@ -340,137 +225,219 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final vault = Provider.of<VaultProvider>(context);
+    final totalItems = vault.categories.fold<int>(0, (sum, cat) => sum + cat.entries.length);
+    
+    // Collect recent entries across all categories
+    List<Map<String, dynamic>> recentEntries = [];
+    for (var cat in vault.categories) {
+      for (var entry in cat.entries) {
+        recentEntries.add({'entry': entry, 'category': cat});
+      }
+    }
+
+    // Category colors for left border accent
+    final accentColors = [
+      VaultColors.primary, VaultColors.tertiary, VaultColors.outline, VaultColors.secondary,
+      VaultColors.primaryContainer, VaultColors.tertiaryContainer,
+    ];
+    final catIcons = [Icons.login, Icons.credit_card, Icons.description, Icons.perm_media, Icons.key, Icons.folder_special];
 
     return Scaffold(
-      drawer: _buildDrawer(context),
-      
-      appBar: AppBar(
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white70, size: 28),
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              Scaffold.of(context).openDrawer(); 
-            },
-          ),
-        ),
-        title: const Text('VaultX', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-        centerTitle: true,
-        actions: [
-          // 🔴 UI FIX: Changed Icons.edit_note to Icons.edit
-          IconButton(
-            icon: Icon(isEditMode ? Icons.close : Icons.edit, color: isEditMode ? Colors.redAccent : const Color(0xFF00E5FF)),
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              setState(() {
-                isEditMode = !isEditMode;
-                selectedCategoryIds.clear();
-              });
-            },
-          ),
-          if (isEditMode && selectedCategoryIds.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
-              onPressed: () async { 
-                HapticFeedback.heavyImpact();
-                for (var id in selectedCategoryIds) {
-                  await vault.deleteCategory(id);
-                }
-                setState(() {
-                  isEditMode = false;
-                  selectedCategoryIds.clear();
-                });
-              },
-            ),
-        ],
-      ),
-      body: vault.categories.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.folder_open, size: 80, color: Color(0xFF222225)),
-                  SizedBox(height: 16),
-                  Text('Your vault is empty.', style: TextStyle(color: Colors.grey, fontSize: 16)),
-                ],
+      backgroundColor: VaultColors.background,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // Top bar
+          SliverToBoxAdapter(
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(children: [
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: VaultColors.primary.withValues(alpha: 0.2), width: 2),
+                        ),
+                        child: const Icon(Icons.shield, color: VaultColors.primaryContainer, size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      Text('The Vault', style: GoogleFonts.manrope(
+                        fontSize: 22, fontWeight: FontWeight.w800, color: VaultColors.primary, letterSpacing: -0.5,
+                      )),
+                    ]),
+                    Row(children: [
+                      if (isEditMode && selectedCategoryIds.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.delete_sweep, color: VaultColors.error),
+                          onPressed: () async { 
+                            HapticFeedback.heavyImpact();
+                            for (var id in selectedCategoryIds) await vault.deleteCategory(id);
+                            setState(() { isEditMode = false; selectedCategoryIds.clear(); });
+                          },
+                        ),
+                      IconButton(
+                        icon: Icon(isEditMode ? Icons.close : Icons.search,
+                          color: isEditMode ? VaultColors.error : VaultColors.primary, size: 22),
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          setState(() { isEditMode = !isEditMode; selectedCategoryIds.clear(); });
+                        },
+                      ),
+                    ]),
+                  ],
+                ),
               ),
-            )
-          : ListView.builder(
-              physics: const BouncingScrollPhysics(), 
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              itemCount: vault.categories.length,
-              itemBuilder: (context, index) {
-                final category = vault.categories[index];
-                final isSelected = selectedCategoryIds.contains(category.id);
+            ),
+          ),
 
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.purpleAccent.withValues(alpha: 0.1) : const Color(0xFF161618),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isSelected ? Colors.purpleAccent : Colors.transparent, width: 1.5),
-                  ),
-                  child: ListTile(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    leading: isEditMode
-                        ? Checkbox(
-                            value: isSelected,
-                            activeColor: Colors.purpleAccent,
-                            checkColor: Colors.white,
-                            onChanged: (val) {
-                              HapticFeedback.selectionClick();
-                              setState(() {
-                                val! ? selectedCategoryIds.add(category.id) : selectedCategoryIds.remove(category.id);
-                              });
-                            },
-                          )
-                        : const Icon(Icons.folder_special, color: Colors.purpleAccent, size: 28),
-                    title: Text(category.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                    subtitle: Text('${category.entries.length} items', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                    onLongPress: () {
-                      if (!isEditMode) _showFolderMenu(context, category); 
-                    },
-                    onTap: () {
-                      if (isEditMode) {
-                        HapticFeedback.selectionClick();
-                        setState(() {
-                          isSelected ? selectedCategoryIds.remove(category.id) : selectedCategoryIds.add(category.id);
-                        });
-                      } else {
-                        HapticFeedback.lightImpact();
-                        Navigator.push(
-                          context,
-                          PageRouteBuilder(
-                            pageBuilder: (context, animation, secondaryAnimation) => CategoryDetailScreen(
-                              categoryId: category.id,
-                              categoryName: category.name,
-                            ),
-                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                              return FadeTransition(opacity: animation, child: child);
-                            },
+          // Header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Your Digital\nSanctuary', style: VaultTypography.headlineLg),
+                const SizedBox(height: 8),
+                Text('$totalItems secure items stored and encrypted', style: VaultTypography.bodyMd.copyWith(color: VaultColors.onSurfaceVariant)),
+              ]),
+            ),
+          ),
+
+          // Category Grid
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+              child: vault.categories.isEmpty
+                ? Container(
+                    padding: const EdgeInsets.symmetric(vertical: 48),
+                    decoration: VaultDecorations.card(color: VaultColors.surfaceContainerLow),
+                    child: Column(children: [
+                      Icon(Icons.folder_open, size: 56, color: VaultColors.onSurfaceVariant.withValues(alpha: 0.3)),
+                      const SizedBox(height: 16),
+                      Text('Your vault is empty.', style: VaultTypography.bodyMd.copyWith(color: VaultColors.onSurfaceVariant)),
+                      const SizedBox(height: 4),
+                      Text('Tap + to create a folder', style: VaultTypography.labelSm),
+                    ]),
+                  )
+                : GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 1.4,
+                    ),
+                    itemCount: vault.categories.length,
+                    itemBuilder: (context, index) {
+                      final category = vault.categories[index];
+                      final isSelected = selectedCategoryIds.contains(category.id);
+                      final accent = accentColors[index % accentColors.length];
+                      final icon = catIcons[index % catIcons.length];
+
+                      return GestureDetector(
+                        onTap: () {
+                          if (isEditMode) {
+                            HapticFeedback.selectionClick();
+                            setState(() => isSelected ? selectedCategoryIds.remove(category.id) : selectedCategoryIds.add(category.id));
+                          } else {
+                            HapticFeedback.lightImpact();
+                            Navigator.push(context, PageRouteBuilder(
+                              pageBuilder: (context, animation, secondaryAnimation) => CategoryDetailScreen(categoryId: category.id, categoryName: category.name),
+                              transitionsBuilder: (context, animation, secondaryAnimation, child) => FadeTransition(opacity: animation, child: child),
+                            ));
+                          }
+                        },
+                        onLongPress: () { if (!isEditMode) _showFolderMenu(context, category); },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isSelected ? accent.withValues(alpha: 0.1) : VaultColors.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(VaultRadius.lg),
                           ),
-                        );
-                      }
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Icon(icon, color: accent, size: 24),
+                              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text(category.name, style: VaultTypography.titleMd, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                Text('${category.entries.length} items', style: VaultTypography.labelMd),
+                              ]),
+                            ],
+                          ),
+                        ),
+                      );
                     },
+                  ),
+            ),
+          ),
+
+          // Recent Access
+          if (recentEntries.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Recent Access', style: VaultTypography.headlineSm),
+                    Text('View All', style: VaultTypography.labelLg.copyWith(color: VaultColors.primary)),
+                  ],
+                ),
+              ),
+            ),
+            SliverList(
+              delegate: SliverChildBuilderDelegate((context, index) {
+                if (index >= recentEntries.length || index >= 5) return null;
+                final item = recentEntries[index];
+                final entry = item['entry'];
+                final cat = item['category'];
+                final accent = accentColors[vault.categories.indexOf(cat) % accentColors.length];
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (_) => CategoryDetailScreen(categoryId: cat.id, categoryName: cat.name),
+                      ));
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: VaultDecorations.accentCard(accent: accent, bgColor: VaultColors.surfaceContainerLow),
+                      child: Row(children: [
+                        Container(
+                          width: 44, height: 44,
+                          decoration: BoxDecoration(
+                            color: VaultColors.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(VaultRadius.md),
+                          ),
+                          child: Icon(Icons.key, color: accent, size: 20),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(entry.title, style: VaultTypography.titleMd),
+                          Text('In ${cat.name}', style: VaultTypography.labelMd),
+                        ])),
+                        IconButton(
+                          icon: const Icon(Icons.content_copy, color: VaultColors.onSurfaceVariant, size: 18),
+                          onPressed: () => HapticFeedback.lightImpact(),
+                        ),
+                      ]),
+                    ),
                   ),
                 );
-              },
+              }, childCount: recentEntries.length.clamp(0, 5)),
             ),
-      floatingActionButton: isEditMode
-          ? null
-          : FloatingActionButton(
-              backgroundColor: const Color(0xFF00E5FF),
-              foregroundColor: Colors.black,
-              elevation: 8,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                _showActionMenu(context); 
-              },
-              child: const Icon(Icons.add, size: 32), 
-            ),
-    ); 
-  } 
+          ],
+
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        ],
+      ),
+    );
+  }
 }

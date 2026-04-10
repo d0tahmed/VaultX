@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:root_checker_plus/root_checker_plus.dart'; 
 import 'services/vault_provider.dart';
 import 'screens/lock_screen.dart'; 
+import 'theme/app_theme.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -77,18 +78,21 @@ class _VaultXAppState extends State<VaultXApp> with WidgetsBindingObserver {
     if (!_checkingRoot && _isRooted) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
+        theme: buildVaultTheme(),
         home: Scaffold(
-          backgroundColor: const Color(0xFF0F0F0F),
+          backgroundColor: VaultColors.background,
           body: Padding(
             padding: const EdgeInsets.all(30.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.gpp_bad, size: 100, color: Colors.redAccent),
+                Icon(Icons.gpp_bad, size: 100, color: VaultColors.error),
                 const SizedBox(height: 30),
-                const Text('ENVIRONMENT COMPROMISED', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                Text('ENVIRONMENT COMPROMISED', textAlign: TextAlign.center,
+                  style: VaultTypography.headlineMd.copyWith(color: VaultColors.onSurface)),
                 const SizedBox(height: 20),
-                const Text('VaultX has detected that this device is Rooted.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 16)),
+                Text('VaultX has detected that this device is Rooted.', textAlign: TextAlign.center,
+                  style: VaultTypography.bodyMd.copyWith(color: VaultColors.onSurfaceVariant)),
               ],
             ),
           ),
@@ -100,18 +104,12 @@ class _VaultXAppState extends State<VaultXApp> with WidgetsBindingObserver {
       navigatorKey: navigatorKey, 
       debugShowCheckedModeBanner: false,
       title: 'VaultX',
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF0F0F0F),
-        primaryColor: Colors.cyanAccent,
-        colorScheme: const ColorScheme.dark(
-          primary: Colors.cyanAccent,
-          secondary: Colors.cyanAccent,
-          surface: Color(0xFF1A1A1A), 
-        ),
-        appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0),
-      ),
+      theme: buildVaultTheme(),
       home: _checkingRoot 
-          ? const Scaffold(backgroundColor: Color(0xFF0F0F0F), body: Center(child: CircularProgressIndicator(color: Colors.cyanAccent))) 
+          ? Scaffold(
+              backgroundColor: VaultColors.background,
+              body: const Center(child: CircularProgressIndicator(color: VaultColors.primaryContainer)),
+            )
           : const LockScreen(), 
     );
   }

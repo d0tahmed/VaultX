@@ -1,64 +1,216 @@
-# 🛡️ VaultX: HIGHLY SECURED - Version 2.0.0
+<p align="center">
+  <img src="assets/icon.png" width="120" alt="VaultX Logo" />
+</p>
 
-**VaultX** is a paranoid, locally-hosted password and media manager built for Android. Unlike commercial cloud-based password managers, VaultX assumes your device will eventually fall into the hands of a malicious actor. It is engineered with a hybrid zero-knowledge architecture, aggressive RAM watchdogs, and physical threat mitigations to ensure your data survives—or self-destructs—on your terms.
+<h1 align="center">VaultX</h1>
 
---------------------------
+<p align="center">
+  <strong>Military-Grade Local Password &amp; Media Vault for Android</strong>
+</p>
 
-## ❓ Why use VaultX? (The Value Proposition)
+<p align="center">
+  <a href="#features"><img src="https://img.shields.io/badge/Encryption-AES--256-00E5FF?style=for-the-badge&logo=letsencrypt&logoColor=white" alt="AES-256" /></a>
+  <a href="#features"><img src="https://img.shields.io/badge/PBKDF2-100K%20Iterations-5BE9AD?style=for-the-badge&logo=keycdn&logoColor=white" alt="PBKDF2" /></a>
+  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-DAE2FD?style=for-the-badge" alt="License" /></a>
+</p>
 
-Commercial cloud password managers protect you from remote hackers, but they fail against physical threats: the "Evil Maid" attack, a stolen unlocked phone, or forced coercion. VaultX is built for **physical threat modeling**.
+<p align="center">
+  <em>Your data never leaves your device. No servers. No cloud. No compromise.</em>
+</p>
 
-1. **Zero Cloud Risk:** Your data never leaves your device. No servers to be breached, no databases to be leaked.
-2. **Immune to OS Scrapers:** VaultX aggressively zeroes out plaintext strings from the Dart heap and flushes RAM the millisecond the app loses focus. Memory scrapers will find nothing.
-3. **Active Counter-Intelligence:** If someone tries to guess your PIN, VaultX doesn't just lock them out—it silently photographs them and logs the breach.
-4. **Hardware-Backed Protection:** By tying failure counts to the Android Keystore, VaultX prevents rooted devices from resetting the brute-force counter.
+---
 
---------------------------
+## 📋 Table of Contents
 
-## 🚀 The Evolution: V1 vs. V2
+- [Overview](#overview)
+- [Why VaultX?](#why-vaultx)
+- [Features](#features)
+- [Security Architecture](#security-architecture)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [License](#license)
 
-VaultX V2 is a complete architectural rewrite focusing on memory safety and active physical defense. 
+---
 
-| Feature | VaultX V1 (The Baseline) | VaultX V2 (Red-Team Architecture) |
-| :--- | :--- | :--- |
-| **Encryption Key** | Saved to Secure Storage (Vulnerable to OS wipes) | **Zero-Knowledge PBKDF2** (Derived in real-time via 100k SHA-256 iterations) |
-| **Media Playback** | Exported to Gallery to view | **In-App Secure Player** (Decrypted in RAM, never touches OS Gallery) |
-| **Brute-Force Defense** | Basic Lockout Timer | **Poison Pill** (Cryptographic shredding of all databases after 8 fails) |
-| **Intruder Logging** | None | **The Honeypot** (Silent front-camera capture on 3rd failed attempt) |
-| **Memory Management** | Relied on Garbage Collection | **Aggressive Zeroing** (Plaintext strings explicitly wiped from heap on `dispose`) |
-| **OS Indexing** | Media hidden by obscure folders | **Ghost Protocol** (Random UUIDs + `.nomedia` OS blinding) |
+## Overview
 
---------------------------
+**VaultX** is an open-source, offline-first password and encrypted media manager built with Flutter. Unlike commercial cloud-based password managers, VaultX assumes your device will eventually fall into the hands of a malicious actor. It is engineered with a hybrid zero-knowledge architecture, aggressive RAM watchdogs, and physical threat mitigations to ensure your data survives — or self-destructs — on your terms.
 
-## 🧠 Core Security Features
+---
 
-### 1. Zero-Knowledge PBKDF2 Encryption
-Your master AES key is never saved anywhere on the device. Instead, VaultX mathematically derives it in real-time by hashing your 6-digit PIN and a local salt 100,000 times. When you close the app, the key evaporates from RAM.
+## Why VaultX?
 
-### 2. The Poison Pill (Cryptographic Shredding)
-VaultX tracks authentication failures inside the hardware-backed Android Keystore. After 8 incorrect attempts, it triggers a self-destruct sequence—permanently deleting the encrypted database, the salt, and the media directory. 
+Commercial cloud password managers protect you from remote hackers, but they fail against **physical threats**: the "Evil Maid" attack, a stolen unlocked phone, or forced coercion. VaultX is purpose-built for **physical threat modeling**.
 
-### 3. The Honeypot (Intruder Selfie)
-If an unauthorized user enters an incorrect PIN 3 times, VaultX silently boots a headless camera process, snaps a photo using the front-facing camera without a shutter sound, and logs the timestamp in a hidden "Breach Logs" dashboard.
+| Threat | Cloud Managers | VaultX |
+| :--- | :---: | :---: |
+| Server breach / data leak | ❌ Vulnerable | ✅ No server exists |
+| OS-level memory scraping | ❌ Plaintext in RAM | ✅ Aggressive RAM zeroing |
+| Brute-force PIN attacks | ⚠️ Lockout timer | ✅ Cryptographic shredding |
+| Physical device theft | ⚠️ Basic lock | ✅ Intruder selfie + self-destruct |
+| Root / Jailbreak bypass | ❌ Exposed keychain | ✅ Environment integrity check |
 
-### 4. Hardware-Level RAM Watchdog
-The exact millisecond the app is pushed to the background, minimized, or the screen turns off, the `wipeMemory()` lifecycle function triggers. Active session keys are flushed, the UI is locked, and biometric/PIN authentication is immediately required.
+---
 
-### 5. k-Anonymity Deep Scanning
-VaultX audits your vault for breached passwords using the *Have I Been Pwned* database via strict k-Anonymity. It hashes your password locally (SHA-1) and only transmits the first 5 characters over the network to check for leaks.
+## Features
 
-### 6. Advanced Clipboard Wiping
-When a password is copied, VaultX places it on the clipboard and initiates a strict 15-second countdown. Once the timer hits zero, it blindly overwrites the clipboard, preventing OEM keyboards or clipboard managers from maintaining a history.
+### 🔐 Password Manager
+- AES-256 encrypted local vault with categorized storage
+- Password strength analysis with real-time scoring
+- Breach detection via **Have I Been Pwned** k-Anonymity API
+- One-tap secure password generator (alphanumeric, symbols, custom length)
+- Auto-wipe clipboard after 15 seconds
 
-### 7. Environment Integrity
-Upon cold boot, VaultX scans the device's operating system. If it detects that the phone has been rooted or compromised (which would allow an attacker to bypass the Keystore), VaultX blocks all access and locks down the environment.
---------------------------
+### 🖼️ Encrypted Media Vault
+- Separate PIN-protected media vault (photos & videos)
+- In-app secure player — decrypted media never touches the OS gallery
+- Files stored with randomized UUIDs + `.nomedia` OS blinding
 
-## 🛠️ Getting Started / Compilation
+### 🛡️ Active Defense Systems
+- **Poison Pill** — Cryptographic shredding after 8 failed PIN attempts
+- **Honeypot** — Silent front-camera intruder selfie on 3rd failed attempt
+- **RAM Watchdog** — Session keys flushed the instant the app loses focus
+- **Environment Integrity** — Blocks access on rooted/compromised devices
 
-To build the VaultX Red-Team payload for your local device:
+### 📊 Security Dashboard
+- Visual vault health overview with breach statistics
+- Password strength distribution charts
+- Actionable security recommendations
 
-1. **Clone the repository:**
-   ```bash
-   git clone [https://github.com/yourgithubusername/VaultX-Secure.git](https://github.com/yourgithubusername/VaultX-Secure.git)
-   cd VaultX-Secure
+---
+
+## Security Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    USER INPUT                       │
+│                  (6-digit PIN)                      │
+└──────────────────────┬──────────────────────────────┘
+                       │
+                       ▼
+        ┌──────────────────────────────┐
+        │    PBKDF2-HMAC-SHA256        │
+        │    100,000 iterations        │
+        │    + Device-local salt       │
+        └──────────────┬───────────────┘
+                       │
+                       ▼
+        ┌──────────────────────────────┐
+        │    AES-256-CBC Encryption    │
+        │    Key derived in real-time  │
+        │    Never persisted to disk   │
+        └──────────────┬───────────────┘
+                       │
+              ┌────────┴────────┐
+              ▼                 ▼
+     ┌──────────────┐  ┌──────────────┐
+     │  Passwords   │  │    Media     │
+     │  (JSON Blob) │  │  (AES Files) │
+     └──────────────┘  └──────────────┘
+```
+
+> **Zero-Knowledge Design:** The master AES key is never stored anywhere on the device. It is mathematically derived from your PIN + a local salt at runtime and evaporates from RAM the moment the app loses focus.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+| :--- | :--- |
+| **Framework** | Flutter 3.x (Dart) |
+| **Encryption** | AES-256-CBC via `encrypt` + `pointycastle` |
+| **Key Derivation** | PBKDF2-HMAC-SHA256 (100K iterations) |
+| **Secure Storage** | Android Keystore via `flutter_secure_storage` |
+| **Authentication** | Biometric (fingerprint/face) via `local_auth` |
+| **Breach Detection** | Have I Been Pwned API (k-Anonymity) |
+| **UI** | Material 3 + Custom Design System ("Vaulted Horizon") |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- [Flutter SDK](https://flutter.dev/docs/get-started/install) ≥ 3.0.0
+- Android SDK ≥ 21 (Android 5.0+)
+- A physical Android device (recommended for camera & biometric features)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/d0tahmed/VaultX.git
+cd VaultX
+
+# Install dependencies
+flutter pub get
+
+# Run on a connected device
+flutter run
+```
+
+### Building a Release APK
+
+```bash
+flutter build apk --release
+```
+
+The output APK will be located at `build/app/outputs/flutter-apk/app-release.apk`.
+
+---
+
+## Project Structure
+
+```
+vaultx/
+├── lib/
+│   ├── main.dart                 # App entry point
+│   ├── screens/
+│   │   ├── home_screen.dart      # Password vault list
+│   │   ├── dashboard_screen.dart # Security dashboard & analytics
+│   │   ├── media_vault_screen.dart # Encrypted media vault
+│   │   ├── settings_screen.dart  # App configuration
+│   │   ├── lock_screen.dart      # Biometric / PIN gate
+│   │   ├── pin_setup_screen.dart # First-time PIN creation
+│   │   ├── pin_entry_screen.dart # Media vault PIN entry
+│   │   └── main_shell.dart       # Bottom nav shell
+│   ├── services/
+│   │   ├── vault_provider.dart   # State management & encryption logic
+│   │   └── security_service.dart # Keystore, brute-force tracking, camera
+│   └── theme/
+│       └── app_theme.dart        # Design system tokens
+├── assets/
+│   └── icon.png                  # App icon
+├── android/                      # Android platform config
+├── pubspec.yaml                  # Dependencies
+└── README.md
+```
+
+---
+
+## Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'feat: add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+Please ensure your code follows the existing style and passes `flutter analyze` before submitting.
+
+---
+
+## License
+
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+
+---
+
+<p align="center">
+  Made with ❤️ by <a href="https://github.com/d0tahmed"><strong>d0tahmed</strong></a>
+</p>

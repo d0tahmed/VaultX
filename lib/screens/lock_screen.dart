@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart'; // 🛡️ SEC PATCH: Added for upfront permissions
+import 'package:google_fonts/google_fonts.dart';
 import '../services/vault_provider.dart'; 
 import '../services/security_service.dart';
+import '../theme/app_theme.dart';
 import '../main.dart'; 
-import 'home_screen.dart';
+import 'main_shell.dart';
 import 'pin_setup_screen.dart';
 import 'pin_entry_screen.dart';
 
@@ -17,23 +19,31 @@ class LockScreen extends StatefulWidget {
   State<LockScreen> createState() => _LockScreenState();
 }
 
-class _LockScreenState extends State<LockScreen> {
+class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateMixin {
   final SecurityService _securityService = SecurityService();
   bool _isLoading = true;
   bool _needsSetup = false;
   bool _isPrompting = false; 
+  late AnimationController _pulseCtrl;
+  late Animation<double> _pulseAnim;
 
   @override
   void initState() {
     super.initState();
+    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000));
+    _pulseAnim = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    _pulseCtrl.repeat(reverse: true);
     _checkSetupStatus();
+  }
+
+  @override
+  void dispose() {
+    _pulseCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _checkSetupStatus() async {
     // 🛡️ SEC PATCH: Request Camera Permission UPFRONT.
-    // If the user grants "Every time", the Honeypot works silently forever.
-    // If they grant "Only this time", this code will naturally ask again on the next boot.
-    // This guarantees the intruder never sees a permission pop-up!
     final cameraStatus = await Permission.camera.status;
     if (!cameraStatus.isGranted) {
       await Permission.camera.request();
@@ -81,7 +91,7 @@ class _LockScreenState extends State<LockScreen> {
         Navigator.pushReplacement(
           context,
           PageRouteBuilder( 
-            pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
+            pageBuilder: (context, animation, secondaryAnimation) => const MainShell(),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
             },
@@ -94,8 +104,9 @@ class _LockScreenState extends State<LockScreen> {
         HapticFeedback.heavyImpact();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('You have rebooted your phone or biometrics are locked. Enter PIN to verify yourself.', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            backgroundColor: Colors.redAccent.shade700,
+            content: Text('Biometrics locked. Use your Master PIN instead.',
+              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
+            backgroundColor: VaultColors.error,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 4),
           )
@@ -110,34 +121,53 @@ class _LockScreenState extends State<LockScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(backgroundColor: Color(0xFF0F0F0F), body: Center(child: CircularProgressIndicator(color: Colors.cyanAccent)));
+      return const Scaffold(
+        backgroundColor: VaultColors.background,
+        body: Center(child: CircularProgressIndicator(color: VaultColors.primaryContainer)),
+      );
     }
 
     if (_needsSetup) {
       return Scaffold(
-        backgroundColor: const Color(0xFF0F0F0F),
+        backgroundColor: VaultColors.background,
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(32.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.orangeAccent.withValues(alpha: 0.1), shape: BoxShape.circle), child: const Icon(Icons.shield_outlined, size: 80, color: Colors.orangeAccent)),
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: VaultColors.primaryContainer.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.shield_outlined, size: 80, color: VaultColors.primaryContainer),
+                ),
                 const SizedBox(height: 40),
-                const Text('INITIAL SETUP', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+                Text('INITIAL SETUP', style: VaultTypography.headlineMd.copyWith(letterSpacing: 1.5)),
                 const SizedBox(height: 20),
-                const Text('Before securing your accounts, you must set a master 6-Digit PIN. This is your ultimate fallback if biometrics fail.\n\nDo not lose this PIN.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 16, height: 1.5)),
+                Text(
+                  'Before securing your accounts, you must set a master 6-Digit PIN. This is your ultimate fallback if biometrics fail.\n\nDo not lose this PIN.',
+                  textAlign: TextAlign.center,
+                  style: VaultTypography.bodyLg.copyWith(color: VaultColors.onSurfaceVariant, height: 1.5),
+                ),
                 const SizedBox(height: 50),
                 SizedBox(
                   width: double.infinity,
                   height: 55,
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent.shade700, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), elevation: 8),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: VaultColors.primaryContainer,
+                      foregroundColor: VaultColors.onPrimary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.full)),
+                      elevation: 0,
+                    ),
                     onPressed: () {
                       HapticFeedback.mediumImpact();
                       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PinSetupScreen()));
                     },
-                    child: const Text('Set Master PIN', style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
+                    child: Text('Set Master PIN', style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700)),
                   ),
                 ),
               ],
@@ -148,45 +178,88 @@ class _LockScreenState extends State<LockScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF1A1A1A), boxShadow: [BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.1), blurRadius: 30, spreadRadius: 10)]),
-              child: const Icon(Icons.lock_outline, size: 80, color: Colors.cyanAccent),
+      backgroundColor: VaultColors.background,
+      body: Stack(
+        children: [
+          // Subtle ambient glow
+          Positioned(top: -100, left: -100,
+            child: Container(width: 400, height: 400, decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [VaultColors.primary.withValues(alpha: 0.04), Colors.transparent]),
+            )),
+          ),
+
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Lock icon with pulse
+                AnimatedBuilder(
+                  animation: _pulseAnim,
+                  builder: (context, child) {
+                    return Container(
+                      padding: const EdgeInsets.all(28),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: VaultColors.surfaceContainerHigh,
+                        boxShadow: [
+                          BoxShadow(
+                            color: VaultColors.primaryContainer.withValues(alpha: 0.05 + _pulseAnim.value * 0.1),
+                            blurRadius: 40 + _pulseAnim.value * 20,
+                            spreadRadius: 10 + _pulseAnim.value * 10,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.lock_outline, size: 64, color: VaultColors.primary),
+                    );
+                  },
+                ),
+                const SizedBox(height: 40),
+                Text('VAULTX', style: GoogleFonts.manrope(
+                  fontSize: 28, fontWeight: FontWeight.w800, color: VaultColors.onSurface, letterSpacing: 6,
+                )),
+                const SizedBox(height: 8),
+                Text('YOUR DIGITAL SANCTUARY', style: VaultTypography.labelSm.copyWith(letterSpacing: 3)),
+                const SizedBox(height: 60),
+                
+                // Fingerprint button
+                InkWell(
+                  borderRadius: BorderRadius.circular(50),
+                  onTap: _startBiometricAuth,
+                  child: Container(
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: VaultColors.primary.withValues(alpha: 0.3), width: 2),
+                    ),
+                    child: const Icon(Icons.fingerprint, size: 56, color: VaultColors.primary),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('Tap to scan fingerprint', style: VaultTypography.bodySm),
+                
+                const SizedBox(height: 50),
+                
+                // Master PIN button
+                TextButton.icon(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                    backgroundColor: VaultColors.surfaceContainerHigh,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VaultRadius.full)),
+                  ),
+                  icon: const Icon(Icons.dialpad, color: VaultColors.primaryContainer, size: 20),
+                  label: Text('Use Master PIN', style: GoogleFonts.inter(
+                    color: VaultColors.primaryContainer, fontSize: 14, fontWeight: FontWeight.w600,
+                  )),
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const PinEntryScreen()));
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: 40),
-            const Text('VAULTX IS LOCKED', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: 2.0)),
-            const SizedBox(height: 60),
-            
-            InkWell(
-              borderRadius: BorderRadius.circular(50),
-              onTap: _startBiometricAuth,
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3), width: 2)),
-                child: const Icon(Icons.fingerprint, size: 60, color: Colors.cyanAccent),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text('Tap to scan fingerprint', style: TextStyle(color: Colors.white54)),
-            
-            const SizedBox(height: 50),
-            
-            TextButton.icon(
-              style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), backgroundColor: const Color(0xFF1A1A1A)),
-              icon: const Icon(Icons.dialpad, color: Colors.cyanAccent),
-              label: const Text('Use Master PIN', style: TextStyle(color: Colors.cyanAccent, fontSize: 16, fontWeight: FontWeight.bold)),
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const PinEntryScreen()));
-              },
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
