@@ -12,6 +12,27 @@ import 'package:gal/gal.dart'; // 🔴 NATIVE GALLERY ENGINE
 import '../models/password_entry.dart';
 import '../models/media_entry.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SUPERSEDED IN v4 — the cryptography here is replaced by lib/crypto/ and
+// lib/services/vault_crypto_service.dart. Kept only until the v3 screens are
+// rebuilt against the new services.
+//
+// Known flaws, all fixed in the v4 replacements:
+//   * _deriveKey is 100,000 rounds of raw SHA-256, NOT the PBKDF2 the old README
+//     claimed. After round one the salt and PIN are gone and it just re-hashes
+//     32 bytes, so it parallelises perfectly across PIN candidates on a GPU.
+//     v4 uses Argon2id, which is memory-hard.
+//   * AES-256-CBC with no MAC: ciphertext is malleable and unauthenticated.
+//     v4 uses XChaCha20-Poly1305 with the header bound in as AAD.
+//   * The legacy branch in _decrypt calls enc.IV.fromLength(16) believing it is
+//     an all-zero IV. It is `SecureRandom(n).bytes` — RANDOM — so that path
+//     could never decrypt anything and silently stranded genuinely old vaults.
+//     lib/services/vault_migration.dart uses enc.IV(Uint8List(16)) and recovers it.
+//   * addMedia only File.copy()s the original into a UUID filename. The media
+//     was never encrypted, despite the README. v4 uses libsodium secretstream.
+//   * _saveData writes the vault in place, so an interrupted save destroys it.
+//     v4 writes to a temp file and renames.
+// ─────────────────────────────────────────────────────────────────────────────
 class VaultProvider with ChangeNotifier {
   List<PasswordCategory> _categories = [];
   List<MediaFolder> _mediaFolders = [];
@@ -19,7 +40,7 @@ class VaultProvider with ChangeNotifier {
   final _uuid = const Uuid();
   bool _isUnlocked = false;
   bool _isMediaUnlocked = false;
-  bool _isPickingMedia = false;
+  final bool _isPickingMedia = false;
   bool _dataCorrupted = false;
 
   String? _activePin;

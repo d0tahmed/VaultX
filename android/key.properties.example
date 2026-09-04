@@ -1,0 +1,11 @@
+# Copy to android/key.properties and fill in with your own upload keystore.
+# android/key.properties is gitignored — never commit real signing material.
+#
+# Create a keystore with:
+#   keytool -genkey -v -keystore ~/vaultx-upload.jks \
+#     -keyalg RSA -keysize 4096 -validity 10000 -alias vaultx
+#
+storePassword=your-store-password
+keyPassword=your-key-password
+keyAlias=vaultx
+storeFile=/absolute/path/to/vaultx-upload.jks

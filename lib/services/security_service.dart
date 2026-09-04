@@ -2,12 +2,31 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:crypto/crypto.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SUPERSEDED IN v4 — DO NOT WIRE NEW CODE TO THIS FILE.
+//
+// Replaced by lib/services/vault_crypto_service.dart, lib/crypto/vault_keyring.dart
+// and lib/services/device_key_store.dart. It remains only because the v3 screens
+// still import it, and is deleted once those screens are rebuilt.
+//
+// Known flaws, all fixed in the v4 replacements:
+//   * _hashPin is ONE round of SHA-256 over a salt hard-coded in public source,
+//     so the 10^6 possible 6-digit PINs are exhaustible in milliseconds.
+//     v4 stores no PIN verifier at all — the AEAD tag is the check.
+//   * _sessionPinKey stores the RAW PIN so biometrics can re-derive the key,
+//     which made "the key is never persisted" untrue. v4 wraps the master key
+//     under a keystore key that requires a live biometric and never sees the PIN.
+//   * The 8-failure poison pill calls _storage.deleteAll(), which drops the
+//     keystore entries but leaves the encrypted vault and the unencrypted media
+//     on disk. v4 shreds the keyring first, then every artefact.
+// ─────────────────────────────────────────────────────────────────────────────
+
 class VaultDestroyedException implements Exception {}
 
 class SecurityService {
-  final _storage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  // `encryptedSharedPreferences` was removed in flutter_secure_storage v11 and
+  // is ignored when passed; existing data migrates to the package's own ciphers.
+  final _storage = const FlutterSecureStorage();
 
   static const _pinKey         = 'user_master_pin';
   static const _mediaPinKey    = 'user_media_pin'; 

@@ -10,6 +10,9 @@ dependencies:
   flutter:
     sdk: flutter
   
+  # Cryptography — libsodium (Argon2id, XChaCha20-Poly1305, secretstream)
+  sodium: ^4.1.0
+
   # Security & Auth
   root_checker_plus: any
   provider: ^6.1.1
@@ -38,6 +41,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  test: ^1.25.0
   flutter_lints: ^3.0.0
   flutter_launcher_icons: ^0.14.4
 

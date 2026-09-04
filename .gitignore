@@ -110,3 +110,7 @@ migrate_working_dir/
 # ─────────────────────────────────────────────
 *.zip
 _stitch_secure_ui/
+# Signing material — never commit
+android/key.properties
+*.jks
+*.keystore
